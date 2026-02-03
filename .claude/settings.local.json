@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(powershell:*)",
+      "Bash(npx create-next-app:*)",
+      "Bash(npm run build:*)"
+    ]
+  }
+}
