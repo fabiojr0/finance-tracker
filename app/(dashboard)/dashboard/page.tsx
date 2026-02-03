@@ -8,7 +8,7 @@ import { ExpensesByCategoryChart } from '@/components/dashboard/expenses-by-cate
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Button } from '@/components/ui/button'
-import { LoadingSpinner } from '@/components/shared/loading-spinner'
+import { SkeletonCard, SkeletonChart, SkeletonTransactionList } from '@/components/shared/skeleton'
 import { CategoryIcon } from '@/components/shared/category-icon'
 import { useFinance } from '@/lib/contexts/finance-context'
 import { formatCurrency } from '@/lib/utils/format-currency'
@@ -84,8 +84,33 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" />
+      <div className="space-y-4">
+        {/* Stats Cards Skeleton */}
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+        {/* Charts Skeleton */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <SkeletonChart />
+          <SkeletonChart />
+        </div>
+        {/* Recent Transactions Skeleton */}
+        <Card>
+          <CardHeader className="pb-3 px-4 sm:px-6">
+            <div className="flex items-center justify-between gap-2">
+              <div className="space-y-2">
+                <div className="h-5 w-40 bg-neutral-800 rounded animate-pulse" />
+                <div className="h-4 w-32 bg-neutral-800 rounded animate-pulse" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 px-4 sm:px-6">
+            <SkeletonTransactionList rows={5} />
+          </CardContent>
+        </Card>
       </div>
     )
   }

@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/shared/empty-state'
-import { LoadingSpinner } from '@/components/shared/loading-spinner'
+import { Skeleton, SkeletonTable } from '@/components/shared/skeleton'
 import { CategoryIcon } from '@/components/shared/category-icon'
 import { useTransactionModal } from '@/components/transactions/transaction-modal'
 import {
@@ -216,8 +216,36 @@ export default function TransactionsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" />
+      <div className="space-y-4">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-32" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+          <Skeleton className="h-9 w-9 sm:h-10 sm:w-36 rounded-md" />
+        </div>
+        {/* Filters Skeleton */}
+        <Card>
+          <CardContent className="p-3 sm:p-4">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-9 w-full sm:w-40" />
+                <Skeleton className="h-9 flex-1 sm:w-32" />
+                <Skeleton className="h-9 flex-1 sm:w-32 hidden sm:block" />
+                <Skeleton className="h-9 flex-1 sm:w-32" />
+              </div>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-9 w-32" />
+                <Skeleton className="h-9 w-32" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        {/* Table Skeleton */}
+        <SkeletonTable rows={8} />
       </div>
     )
   }

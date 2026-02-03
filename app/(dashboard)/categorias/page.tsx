@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { EmptyState } from '@/components/shared/empty-state'
-import { LoadingSpinner } from '@/components/shared/loading-spinner'
+import { Skeleton, SkeletonCategoryCard } from '@/components/shared/skeleton'
 import { IconPicker } from '@/components/shared/icon-picker'
 import { CategoryIcon } from '@/components/shared/category-icon'
 import { useFinance } from '@/lib/contexts/finance-context'
@@ -56,8 +56,21 @@ export default function CategoriesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" />
+      <div className="space-y-4 sm:space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-9 w-9 sm:h-10 sm:w-36 rounded-md" />
+        </div>
+        {/* Category Cards Skeleton */}
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+          <SkeletonCategoryCard />
+          <SkeletonCategoryCard />
+          <SkeletonCategoryCard />
+        </div>
       </div>
     )
   }

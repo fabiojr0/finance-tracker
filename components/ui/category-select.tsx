@@ -9,7 +9,7 @@ import { CategoryIcon } from '@/components/shared/category-icon'
 interface Category {
   id: string
   name: string
-  icon: string
+  icon: string | null
   type: string
 }
 

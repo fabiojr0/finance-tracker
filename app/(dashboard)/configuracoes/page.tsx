@@ -5,15 +5,54 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useUser } from '@/lib/hooks/use-user'
-import { LoadingSpinner } from '@/components/shared/loading-spinner'
+import { Skeleton } from '@/components/shared/skeleton'
+
+function SkeletonSettingsCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-6 w-24" />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-3 w-48" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-3 w-40" />
+        </div>
+        <Skeleton className="h-10 w-32 mt-4" />
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function SettingsPage() {
   const { user, loading } = useUser()
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" />
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-40" />
+          <Skeleton className="h-5 w-72" />
+        </div>
+        {/* Cards Skeleton */}
+        <SkeletonSettingsCard />
+        <SkeletonSettingsCard />
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-4 w-64 mb-4" />
+            <Skeleton className="h-10 w-32" />
+          </CardContent>
+        </Card>
       </div>
     )
   }

@@ -1,6 +1,6 @@
 'use client'
 
-import { LoadingSpinner } from '@/components/shared/loading-spinner'
+import { Skeleton, SkeletonChart } from '@/components/shared/skeleton'
 import { CategoryChart } from '@/components/reports/category-chart'
 import { TrendChart } from '@/components/reports/trend-chart'
 import { MonthlyChart } from '@/components/dashboard/monthly-chart'
@@ -11,8 +11,16 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" />
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-32" />
+          <Skeleton className="h-5 w-64" />
+        </div>
+        {/* Charts Skeleton */}
+        <SkeletonChart className="h-80" />
+        <SkeletonChart className="h-80" />
+        <SkeletonChart className="h-80" />
       </div>
     )
   }
