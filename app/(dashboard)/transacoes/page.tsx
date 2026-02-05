@@ -10,19 +10,22 @@ import {
   ArrowUp,
   ArrowDown,
   Filter,
-  X,
   ArrowDownLeft,
   ArrowUpRight,
   LineChart,
-  Calendar,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton, SkeletonTable } from '@/components/shared/skeleton'
 import { CategoryIcon } from '@/components/shared/category-icon'
 import { useTransactionModal } from '@/components/transactions/transaction-modal'
+import {
+  TransactionFilterModal,
+  TransactionFilters,
+  FilterTag,
+} from '@/components/transactions/transaction-filter-modal'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -50,13 +53,18 @@ export default function TransactionsPage() {
 
   const { openModal } = useTransactionModal()
 
+  // Filter modal
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+
   // Filters
-  const [typeFilter, setTypeFilter] = useState<string>('all')
-  const [categoryFilter, setCategoryFilter] = useState<string>('all')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const [filters, setFilters] = useState<TransactionFilters>({
+    typeFilter: 'all',
+    categoryFilter: 'all',
+    statusFilter: 'all',
+    searchQuery: '',
+    startDate: '',
+    endDate: '',
+  })
 
   // Sorting
   const [sortField, setSortField] = useState<SortField | null>('date')
@@ -92,17 +100,17 @@ export default function TransactionsPage() {
     let result = [...transactions]
 
     // Apply filters
-    if (typeFilter !== 'all') {
-      result = result.filter((t) => t.type === typeFilter)
+    if (filters.typeFilter !== 'all') {
+      result = result.filter((t) => t.type === filters.typeFilter)
     }
-    if (categoryFilter !== 'all') {
-      result = result.filter((t) => t.category_id === categoryFilter)
+    if (filters.categoryFilter !== 'all') {
+      result = result.filter((t) => t.category_id === filters.categoryFilter)
     }
-    if (statusFilter !== 'all') {
-      result = result.filter((t) => t.status === statusFilter)
+    if (filters.statusFilter !== 'all') {
+      result = result.filter((t) => t.status === filters.statusFilter)
     }
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
+    if (filters.searchQuery) {
+      const query = filters.searchQuery.toLowerCase()
       result = result.filter(
         (t) =>
           t.description.toLowerCase().includes(query) ||
@@ -110,13 +118,13 @@ export default function TransactionsPage() {
       )
     }
     // Date range filter
-    if (startDate) {
-      const start = new Date(startDate)
+    if (filters.startDate) {
+      const start = new Date(filters.startDate)
       start.setHours(0, 0, 0, 0)
       result = result.filter((t) => new Date(t.date) >= start)
     }
-    if (endDate) {
-      const end = new Date(endDate)
+    if (filters.endDate) {
+      const end = new Date(filters.endDate)
       end.setHours(23, 59, 59, 999)
       result = result.filter((t) => new Date(t.date) <= end)
     }
@@ -152,7 +160,7 @@ export default function TransactionsPage() {
     }
 
     return result
-  }, [transactions, typeFilter, categoryFilter, statusFilter, searchQuery, startDate, endDate, sortField, sortDirection])
+  }, [transactions, filters, sortField, sortDirection])
 
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta transação?')) {
@@ -161,16 +169,55 @@ export default function TransactionsPage() {
   }
 
   const clearFilters = () => {
-    setTypeFilter('all')
-    setCategoryFilter('all')
-    setStatusFilter('all')
-    setSearchQuery('')
-    setStartDate('')
-    setEndDate('')
+    setFilters({
+      typeFilter: 'all',
+      categoryFilter: 'all',
+      statusFilter: 'all',
+      searchQuery: '',
+      startDate: '',
+      endDate: '',
+    })
   }
 
   const hasActiveFilters =
-    typeFilter !== 'all' || categoryFilter !== 'all' || statusFilter !== 'all' || searchQuery !== '' || startDate !== '' || endDate !== ''
+    filters.typeFilter !== 'all' ||
+    filters.categoryFilter !== 'all' ||
+    filters.statusFilter !== 'all' ||
+    filters.searchQuery !== '' ||
+    filters.startDate !== '' ||
+    filters.endDate !== ''
+
+  const activeFilterCount = [
+    filters.typeFilter !== 'all',
+    filters.categoryFilter !== 'all',
+    filters.statusFilter !== 'all',
+    filters.startDate !== '' || filters.endDate !== '',
+  ].filter(Boolean).length
+
+  const getTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      receita: 'Receita',
+      despesa: 'Despesa',
+      investimento: 'Investimento',
+      transferencia: 'Transferência',
+    }
+    return labels[type] || type
+  }
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      concluida: 'Concluída',
+      pendente: 'Pendente',
+      cancelada: 'Cancelada',
+    }
+    return labels[status] || status
+  }
+
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find((c) => c.id === categoryId)
+    return category?.name || categoryId
+  }
+
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -226,24 +273,9 @@ export default function TransactionsPage() {
           <Skeleton className="h-9 w-9 sm:h-10 sm:w-36 rounded-md" />
         </div>
         {/* Filters Skeleton */}
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-9 w-full sm:w-40" />
-                <Skeleton className="h-9 flex-1 sm:w-32" />
-                <Skeleton className="h-9 flex-1 sm:w-32 hidden sm:block" />
-                <Skeleton className="h-9 flex-1 sm:w-32" />
-              </div>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-9 w-32" />
-                <Skeleton className="h-9 w-32" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-9 w-24" />
+        </div>
         {/* Table Skeleton */}
         <SkeletonTable rows={8} />
       </div>
@@ -268,109 +300,83 @@ export default function TransactionsPage() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="p-3 sm:p-4">
-          <div className="space-y-3">
-            {/* First row - Search and basic filters */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <div className="flex items-center gap-2 text-neutral-400">
-                <Filter className="h-4 w-4" />
-                <span className="text-sm font-medium hidden sm:inline">Filtros:</span>
-              </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-end gap-2">
+          <Input
+            placeholder="Buscar transações..."
+            value={filters.searchQuery}
+            onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+            className="w-full max-w-xs h-9"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsFilterModalOpen(true)}
+            className="h-9"
+          >
+            <Filter className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Filtrar</span>
+            {activeFilterCount > 0 && (
+              <span className="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-primary text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            )}
+          </Button>
+        </div>
 
-              <Input
-                placeholder="Buscar..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full sm:w-40 lg:w-48 h-9"
+        {/* Active filter tags */}
+        {(filters.typeFilter !== 'all' ||
+          filters.categoryFilter !== 'all' ||
+          filters.statusFilter !== 'all' ||
+          filters.startDate ||
+          filters.endDate) && (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {filters.typeFilter !== 'all' && (
+              <FilterTag
+                label={getTypeLabel(filters.typeFilter)}
+                onRemove={() => setFilters({ ...filters, typeFilter: 'all' })}
               />
+            )}
+            {filters.categoryFilter !== 'all' && (
+              <FilterTag
+                label={getCategoryName(filters.categoryFilter)}
+                onRemove={() => setFilters({ ...filters, categoryFilter: 'all' })}
+              />
+            )}
+            {filters.statusFilter !== 'all' && (
+              <FilterTag
+                label={getStatusLabel(filters.statusFilter)}
+                onRemove={() => setFilters({ ...filters, statusFilter: 'all' })}
+              />
+            )}
+            {(filters.startDate || filters.endDate) && (
+              <FilterTag
+                label={
+                  filters.startDate && filters.endDate
+                    ? `${formatDate(filters.startDate)} - ${formatDate(filters.endDate)}`
+                    : filters.startDate
+                    ? `A partir de ${formatDate(filters.startDate)}`
+                    : `Até ${formatDate(filters.endDate)}`
+                }
+                onRemove={() => setFilters({ ...filters, startDate: '', endDate: '' })}
+              />
+            )}
 
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="h-9 rounded-md border border-neutral-700 bg-neutral-800 px-2 sm:px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary flex-1 sm:flex-none min-w-0"
-              >
-                <option value="all">Todos os tipos</option>
-                <option value="receita">Receita</option>
-                <option value="despesa">Despesa</option>
-                <option value="investimento">Investimento</option>
-                <option value="transferencia">Transferência</option>
-              </select>
-
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="h-9 rounded-md border border-neutral-700 bg-neutral-800 px-2 sm:px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary flex-1 sm:flex-none min-w-0 hidden sm:block"
-              >
-                <option value="all">Todas as categorias</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-9 rounded-md border border-neutral-700 bg-neutral-800 px-2 sm:px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary flex-1 sm:flex-none min-w-0"
-              >
-                <option value="all">Todos os status</option>
-                <option value="concluida">Concluída</option>
-                <option value="pendente">Pendente</option>
-                <option value="cancelada">Cancelada</option>
-              </select>
-            </div>
-
-            {/* Second row - Date filters */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <div className="flex items-center gap-2 text-neutral-400">
-                <Calendar className="h-4 w-4" />
-                <span className="text-sm font-medium">Período:</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="h-9 rounded-md border border-neutral-700 bg-neutral-800 px-2 sm:px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary [color-scheme:dark]"
-                  placeholder="Data inicial"
-                />
-                <span className="text-neutral-500 text-sm">até</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="h-9 rounded-md border border-neutral-700 bg-neutral-800 px-2 sm:px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary [color-scheme:dark]"
-                  placeholder="Data final"
-                />
-              </div>
-
-              {/* Mobile category filter */}
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="h-9 rounded-md border border-neutral-700 bg-neutral-800 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary flex-1 min-w-0 sm:hidden"
-              >
-                <option value="all">Todas categorias</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-
-              {hasActiveFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 ml-auto sm:ml-0">
-                  <X className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Limpar</span>
-                </Button>
-              )}
-            </div>
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs text-neutral-400">
+              Limpar filtros
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
+
+      {/* Filter Modal */}
+      <TransactionFilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        filters={filters}
+        onApplyFilters={setFilters}
+        categories={categories}
+      />
 
       {/* Table */}
       <Card>
@@ -399,7 +405,7 @@ export default function TransactionsPage() {
               />
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[60vh] sm:max-h-none overflow-y-auto sm:overflow-y-visible">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent border-neutral-800">
