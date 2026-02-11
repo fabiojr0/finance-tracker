@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { transactionSchema } from '@/lib/utils/validation'
 import { Button } from '@/components/ui/button'
 import { CategorySelect } from '@/components/ui/category-select'
+import { useCategoryModal } from '@/components/categories/category-modal'
 import { useFinance } from '@/lib/contexts/finance-context'
 import { CreateTransactionInput } from '@/types/transaction'
+import { CategoryType } from '@/types/category'
 import { z } from 'zod'
 import { cn } from '@/lib/utils/cn'
 import {
@@ -77,6 +79,7 @@ export function TransactionForm({
   isLoading,
 }: TransactionFormProps) {
   const { categories } = useFinance()
+  const { openModal: openCategoryModal } = useCategoryModal()
 
   const {
     register,
@@ -101,9 +104,11 @@ export function TransactionForm({
     (cat) => cat.type === transactionType
   )
 
-  // Reset category when type changes
+  // Reset category when type changes (skip initial mount)
+  const prevTypeRef = useRef(transactionType)
   useEffect(() => {
-    if (transactionType) {
+    if (prevTypeRef.current !== transactionType) {
+      prevTypeRef.current = transactionType
       setValue('category_id', '')
     }
   }, [transactionType, setValue])
@@ -278,6 +283,7 @@ export function TransactionForm({
                 placeholder="Selecione"
                 disabled={isLoading}
                 error={!!errors.category_id}
+                onCreateNew={() => openCategoryModal(transactionType as CategoryType)}
               />
             )}
           />

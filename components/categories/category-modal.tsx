@@ -4,11 +4,12 @@ import { useState, createContext, useContext, useCallback, ReactNode } from 'rea
 import { Modal, ModalHeader, ModalContent } from '@/components/ui/modal'
 import { CategoryForm } from './category-form'
 import { useFinance } from '@/lib/contexts/finance-context'
-import { CreateCategoryInput } from '@/types/category'
+import { CreateCategoryInput, CategoryType, Category } from '@/types/category'
 
 interface CategoryModalContextType {
   isOpen: boolean
-  openModal: () => void
+  openModal: (defaultType?: CategoryType) => void
+  openEditModal: (category: Category) => void
   closeModal: () => void
 }
 
@@ -28,14 +29,36 @@ interface CategoryModalProviderProps {
 
 export function CategoryModalProvider({ children }: CategoryModalProviderProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [defaultType, setDefaultType] = useState<CategoryType | undefined>(undefined)
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
 
-  const openModal = useCallback(() => setIsOpen(true), [])
-  const closeModal = useCallback(() => setIsOpen(false), [])
+  const openModal = useCallback((type?: CategoryType) => {
+    setEditingCategory(null)
+    setDefaultType(type)
+    setIsOpen(true)
+  }, [])
+
+  const openEditModal = useCallback((category: Category) => {
+    setEditingCategory(category)
+    setDefaultType(undefined)
+    setIsOpen(true)
+  }, [])
+
+  const closeModal = useCallback(() => {
+    setIsOpen(false)
+    setDefaultType(undefined)
+    setEditingCategory(null)
+  }, [])
 
   return (
-    <CategoryModalContext.Provider value={{ isOpen, openModal, closeModal }}>
+    <CategoryModalContext.Provider value={{ isOpen, openModal, openEditModal, closeModal }}>
       {children}
-      <CategoryModal isOpen={isOpen} onClose={closeModal} />
+      <CategoryModal
+        isOpen={isOpen}
+        onClose={closeModal}
+        defaultType={defaultType}
+        editingCategory={editingCategory}
+      />
     </CategoryModalContext.Provider>
   )
 }
@@ -43,30 +66,51 @@ export function CategoryModalProvider({ children }: CategoryModalProviderProps) 
 interface CategoryModalProps {
   isOpen: boolean
   onClose: () => void
+  defaultType?: CategoryType
+  editingCategory: Category | null
 }
 
-function CategoryModal({ isOpen, onClose }: CategoryModalProps) {
-  const { createCategory } = useFinance()
+function CategoryModal({ isOpen, onClose, defaultType, editingCategory }: CategoryModalProps) {
+  const { createCategory, updateCategory } = useFinance()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (data: CreateCategoryInput) => {
     setIsSubmitting(true)
-    const { error } = await createCategory(data)
-    setIsSubmitting(false)
 
-    if (!error) {
-      onClose()
+    if (editingCategory) {
+      const { error } = await updateCategory(editingCategory.id, data)
+      setIsSubmitting(false)
+      if (!error) onClose()
+    } else {
+      const { error } = await createCategory(data)
+      setIsSubmitting(false)
+      if (!error) onClose()
     }
   }
 
+  const defaultValues = editingCategory
+    ? {
+        name: editingCategory.name,
+        type: editingCategory.type as CategoryType,
+        icon: editingCategory.icon || undefined,
+        color: editingCategory.color || undefined,
+      }
+    : defaultType
+    ? { type: defaultType }
+    : undefined
+
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalHeader onClose={onClose}>Nova Categoria</ModalHeader>
+      <ModalHeader onClose={onClose}>
+        {editingCategory ? 'Editar Categoria' : 'Nova Categoria'}
+      </ModalHeader>
       <ModalContent>
         <CategoryForm
+          key={editingCategory?.id || defaultType || 'default'}
           onSubmit={handleSubmit}
           onCancel={onClose}
           isLoading={isSubmitting}
+          defaultValues={defaultValues}
         />
       </ModalContent>
     </Modal>

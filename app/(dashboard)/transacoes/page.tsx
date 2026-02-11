@@ -12,6 +12,7 @@ import {
   Filter,
   ArrowDownLeft,
   ArrowUpRight,
+  ArrowLeftRight,
   LineChart,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -51,7 +52,7 @@ export default function TransactionsPage() {
     deleteTransaction,
   } = useFinance()
 
-  const { openModal } = useTransactionModal()
+  const { openModal, openEditModal } = useTransactionModal()
 
   // Filter modal
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
@@ -227,6 +228,8 @@ export default function TransactionsPage() {
         return <ArrowUpRight className="h-4 w-4 text-red-500" />
       case 'investimento':
         return <LineChart className="h-4 w-4 text-blue-500" />
+      case 'transferencia':
+        return <ArrowLeftRight className="h-4 w-4 text-yellow-500" />
       default:
         return null
     }
@@ -478,6 +481,8 @@ export default function TransactionsPage() {
                                 ? 'bg-green-500/20'
                                 : transaction.type === 'investimento'
                                 ? 'bg-blue-500/20'
+                                : transaction.type === 'transferencia'
+                                ? 'bg-yellow-500/20'
                                 : 'bg-red-500/20'
                             )}
                           >
@@ -539,7 +544,7 @@ export default function TransactionsPage() {
                             </Button>
                           }
                         >
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditModal(transaction)}>
                             <Pencil className="h-4 w-4" />
                             Editar
                           </DropdownMenuItem>

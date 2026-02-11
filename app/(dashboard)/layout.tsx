@@ -12,8 +12,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <FinanceProvider>
-      <TransactionModalProvider>
-        <CategoryModalProvider>
+      <CategoryModalProvider>
+        <TransactionModalProvider>
           <div className="flex h-screen overflow-hidden bg-neutral-950">
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -25,8 +25,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </main>
             </div>
           </div>
-        </CategoryModalProvider>
-      </TransactionModalProvider>
+        </TransactionModalProvider>
+      </CategoryModalProvider>
     </FinanceProvider>
   )
 }

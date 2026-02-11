@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS categories (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('receita', 'despesa', 'investimento')),
+  type TEXT NOT NULL CHECK (type IN ('receita', 'despesa', 'investimento', 'transferencia')),
   icon TEXT,
   color TEXT,
   is_active BOOLEAN DEFAULT TRUE,

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { IconPicker } from '@/components/shared/icon-picker'
 import { CreateCategoryInput, CategoryType } from '@/types/category'
 import { cn } from '@/lib/utils/cn'
-import { TrendingDown, TrendingUp, LineChart, Tag, Palette } from 'lucide-react'
+import { TrendingDown, TrendingUp, LineChart, ArrowLeftRight, Tag, Palette } from 'lucide-react'
 
 interface CategoryFormProps {
   onSubmit: (data: CreateCategoryInput) => Promise<void>
@@ -41,6 +41,14 @@ const typeOptions = [
     bgColor: 'bg-blue-500/10',
     borderColor: 'border-blue-500',
   },
+  {
+    value: 'transferencia',
+    label: 'Transferência',
+    icon: ArrowLeftRight,
+    color: 'text-yellow-500',
+    bgColor: 'bg-yellow-500/10',
+    borderColor: 'border-yellow-500',
+  },
 ]
 
 export function CategoryForm({
@@ -69,7 +77,7 @@ export function CategoryForm({
           <Tag className="h-4 w-4 text-neutral-500" />
           Tipo de Categoria
         </label>
-        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
           {typeOptions.map((option) => {
             const Icon = option.icon
             const isSelected = formData.type === option.value

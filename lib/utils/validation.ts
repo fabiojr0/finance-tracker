@@ -25,7 +25,7 @@ export const categorySchema = z.object({
     .string()
     .min(2, 'Nome deve ter no mínimo 2 caracteres')
     .max(50, 'Nome deve ter no máximo 50 caracteres'),
-  type: z.enum(['receita', 'despesa', 'investimento'], 'Tipo de categoria é obrigatório'),
+  type: z.enum(['receita', 'despesa', 'investimento', 'transferencia'], 'Tipo de categoria é obrigatório'),
   icon: z.string().optional(),
   color: z.string().optional(),
 })

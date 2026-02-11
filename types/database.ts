@@ -43,7 +43,7 @@ export interface Database {
           id: string
           user_id: string
           name: string
-          type: 'receita' | 'despesa' | 'investimento'
+          type: 'receita' | 'despesa' | 'investimento' | 'transferencia'
           icon: string | null
           color: string | null
           is_active: boolean
@@ -54,7 +54,7 @@ export interface Database {
           id?: string
           user_id: string
           name: string
-          type: 'receita' | 'despesa' | 'investimento'
+          type: 'receita' | 'despesa' | 'investimento' | 'transferencia'
           icon?: string | null
           color?: string | null
           is_active?: boolean
@@ -65,7 +65,7 @@ export interface Database {
           id?: string
           user_id?: string
           name?: string
-          type?: 'receita' | 'despesa' | 'investimento'
+          type?: 'receita' | 'despesa' | 'investimento' | 'transferencia'
           icon?: string | null
           color?: string | null
           is_active?: boolean

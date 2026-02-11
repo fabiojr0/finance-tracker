@@ -1,6 +1,6 @@
 import { Database } from './database'
 
-export type CategoryType = 'receita' | 'despesa' | 'investimento'
+export type CategoryType = 'receita' | 'despesa' | 'investimento' | 'transferencia'
 
 export type Category = Database['public']['Tables']['categories']['Row']
 export type CategoryInsert = Database['public']['Tables']['categories']['Insert']

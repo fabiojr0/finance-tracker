@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, Check } from 'lucide-react'
+import { ChevronDown, Check, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { CategoryIcon } from '@/components/shared/category-icon'
 
@@ -20,6 +20,7 @@ interface CategorySelectProps {
   placeholder?: string
   disabled?: boolean
   error?: boolean
+  onCreateNew?: () => void
 }
 
 export function CategorySelect({
@@ -29,6 +30,7 @@ export function CategorySelect({
   placeholder = 'Selecione uma categoria',
   disabled,
   error,
+  onCreateNew,
 }: CategorySelectProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [position, setPosition] = React.useState({ top: 0, left: 0, width: 0 })
@@ -150,6 +152,22 @@ export function CategorySelect({
                   )}
                 </button>
               ))
+            )}
+            {onCreateNew && (
+              <>
+                <div className="border-t border-neutral-700 my-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false)
+                    onCreateNew()
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none text-primary"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Criar categoria</span>
+                </button>
+              </>
             )}
           </div>,
           document.body
