@@ -164,20 +164,47 @@ export function TransactionForm({
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm font-medium">
             R$
           </span>
-          <input
-            id="amount"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="0,00"
-            {...register('amount', { valueAsNumber: true })}
-            disabled={isLoading}
-            className={cn(
-              'flex h-10 sm:h-11 w-full rounded-lg border bg-neutral-900 pl-10 pr-3 py-2 text-base font-medium',
-              'placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-neutral-950',
-              'disabled:cursor-not-allowed disabled:opacity-50 transition-colors',
-              errors.amount ? 'border-red-500' : 'border-neutral-700 hover:border-neutral-600'
-            )}
+          <Controller
+            name="amount"
+            control={control}
+            render={({ field }) => {
+              const formatCurrency = (value: number | undefined) => {
+                if (!value && value !== 0) return ''
+                return value.toLocaleString('pt-BR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              }
+
+              const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                const raw = e.target.value.replace(/\./g, '').replace(',', '.')
+                const digits = raw.replace(/[^\d]/g, '')
+                if (digits === '') {
+                  field.onChange(undefined)
+                  return
+                }
+                const numeric = parseFloat(digits) / 100
+                field.onChange(numeric)
+              }
+
+              return (
+                <input
+                  id="amount"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0,00"
+                  value={formatCurrency(field.value)}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className={cn(
+                    'flex h-10 sm:h-11 w-full rounded-lg border bg-neutral-900 pl-10 pr-3 py-2 text-base font-medium',
+                    'placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-neutral-950',
+                    'disabled:cursor-not-allowed disabled:opacity-50 transition-colors',
+                    errors.amount ? 'border-red-500' : 'border-neutral-700 hover:border-neutral-600'
+                  )}
+                />
+              )
+            }}
           />
         </div>
         {errors.amount && (

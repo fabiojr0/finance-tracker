@@ -49,8 +49,8 @@ export function CategorySelect({
       }
     }
 
-    function handleScroll() {
-      if (isOpen) {
+    function handleScroll(event: Event) {
+      if (isOpen && menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsOpen(false)
       }
     }
