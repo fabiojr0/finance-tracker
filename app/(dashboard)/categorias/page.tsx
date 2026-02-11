@@ -147,6 +147,14 @@ export default function CategoriesPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => openEditModal(category)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-neutral-400" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleDelete(category.id)}
                         className="h-8 w-8 p-0"
                       >
@@ -192,6 +200,14 @@ export default function CategoriesPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => openEditModal(category)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-neutral-400" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleDelete(category.id)}
                         className="h-8 w-8 p-0"
                       >
@@ -234,6 +250,14 @@ export default function CategoriesPage() {
                         className="w-4 h-4 rounded-full border border-neutral-700"
                         style={{ backgroundColor: category.color || '#eab308' }}
                       />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditModal(category)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-neutral-400" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
