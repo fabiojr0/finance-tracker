@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Wallet,
   CreditCard,
@@ -86,6 +87,7 @@ import {
   Mountain,
   Waves,
   Anchor,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
@@ -236,6 +238,19 @@ export function IconPicker({ value, onChange, disabled }: IconPickerProps) {
     return acc
   }, {} as Record<string, typeof AVAILABLE_ICONS>)
 
+  useEffect(() => {
+    if (!isOpen) return
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setIsOpen(false)
+        setSearch('')
+      }
+    }
+    document.addEventListener('keydown', handleEscape, true)
+    return () => document.removeEventListener('keydown', handleEscape, true)
+  }, [isOpen])
+
   return (
     <div className="relative">
       <button
@@ -259,30 +274,54 @@ export function IconPicker({ value, onChange, disabled }: IconPickerProps) {
         )}
       </button>
 
-      {isOpen && (
-        <>
+      {isOpen && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
+            className="absolute inset-0 bg-black/40"
+            onClick={() => {
+              setIsOpen(false)
+              setSearch('')
+            }}
           />
-          <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl overflow-hidden">
-            <div className="p-2 border-b border-neutral-800">
+
+          {/* Icon Picker Modal */}
+          <div className="relative z-10 w-[90vw] max-w-md bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-neutral-800">
+              <h3 className="text-base font-semibold text-neutral-200">Escolher Ícone</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false)
+                  setSearch('')
+                }}
+                className="text-neutral-400 hover:text-neutral-200 transition-colors p-1 -mr-1"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="p-3 border-b border-neutral-800">
               <input
                 type="text"
                 placeholder="Buscar ícone..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-neutral-200 placeholder:text-neutral-500"
                 autoFocus
               />
             </div>
-            <div className="max-h-64 overflow-y-auto p-2">
+
+            {/* Icons Grid */}
+            <div className="max-h-[50vh] overflow-y-auto p-3">
               {Object.entries(groupedIcons).map(([category, icons]) => (
-                <div key={category} className="mb-3">
+                <div key={category} className="mb-4">
                   <p className="text-xs font-medium text-neutral-500 mb-2 px-1">
                     {category}
                   </p>
-                  <div className="grid grid-cols-6 gap-1">
+                  <div className="grid grid-cols-7 sm:grid-cols-8 gap-1">
                     {icons.map(({ name, icon: Icon }) => (
                       <button
                         key={name}
@@ -293,10 +332,10 @@ export function IconPicker({ value, onChange, disabled }: IconPickerProps) {
                           setSearch('')
                         }}
                         className={cn(
-                          'p-2 rounded-md hover:bg-neutral-800 transition-colors flex items-center justify-center',
-                          value === name && 'bg-primary/20 text-primary'
+                          'p-2.5 rounded-lg hover:bg-neutral-800 transition-colors flex items-center justify-center',
+                          value === name && 'bg-primary/20 text-primary ring-1 ring-primary/50'
                         )}
-                        title={name}
+                        title={name.replace(/-/g, ' ')}
                       >
                         <Icon className="h-5 w-5" />
                       </button>
@@ -305,13 +344,14 @@ export function IconPicker({ value, onChange, disabled }: IconPickerProps) {
                 </div>
               ))}
               {Object.keys(groupedIcons).length === 0 && (
-                <p className="text-center text-neutral-500 text-sm py-4">
+                <p className="text-center text-neutral-500 text-sm py-8">
                   Nenhum ícone encontrado
                 </p>
               )}
             </div>
           </div>
-        </>
+        </div>,
+        document.body
       )}
     </div>
   )
