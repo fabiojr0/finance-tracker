@@ -10,8 +10,10 @@ import {
   BarChart3,
   Settings,
   X,
+  LogOut,
 } from 'lucide-react'
 import { UI_TEXT } from '@/lib/constants/ui-text'
+import { useUser } from '@/lib/hooks/use-user'
 
 interface SidebarProps {
   isOpen?: boolean
@@ -48,6 +50,7 @@ const menuItems = [
 
 export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname()
+  const { user, signOut } = useUser()
 
   return (
     <>
@@ -107,8 +110,20 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-neutral-800">
-            <p className="text-xs text-neutral-400 text-center">
+          <div className="p-4 border-t border-neutral-800 space-y-3">
+            {user && (
+              <p className="text-xs text-neutral-400 text-center truncate px-2">
+                {user.email}
+              </p>
+            )}
+            <button
+              onClick={signOut}
+              className="flex items-center justify-center gap-2 w-full px-4 py-2 text-sm text-red-400 hover:bg-neutral-800 rounded-lg transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>{UI_TEXT.auth.logout}</span>
+            </button>
+            <p className="text-xs text-neutral-500 text-center">
               Finance Tracker v1.0
             </p>
           </div>
