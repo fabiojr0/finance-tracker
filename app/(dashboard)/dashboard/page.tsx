@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Wallet, TrendingUp, TrendingDown, ArrowDownLeft, ArrowUpRight, LineChart, ArrowRight } from 'lucide-react'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { FinancialEvolutionChart } from '@/components/dashboard/financial-evolution-chart'
@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { Button } from '@/components/ui/button'
 import { SkeletonCard, SkeletonChart, SkeletonTransactionList } from '@/components/shared/skeleton'
 import { CategoryIcon } from '@/components/shared/category-icon'
+import { PeriodSelector, getDateRange, getPreviousPeriodRange, PeriodKey } from '@/components/shared/period-selector'
 import { useFinance } from '@/lib/contexts/finance-context'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { formatDate } from '@/lib/utils/format-date'
@@ -17,27 +18,26 @@ import Link from 'next/link'
 
 export default function DashboardPage() {
   const { transactions, transactionsLoading: loading } = useFinance()
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>('this-month')
 
-  // Calcular estatísticas do mês atual e anterior
+  const dateRange = useMemo(() => getDateRange(selectedPeriod), [selectedPeriod])
+  const prevRange = useMemo(() => getPreviousPeriodRange(selectedPeriod), [selectedPeriod])
+
+  // Calcular estatísticas do período selecionado e anterior
   const stats = useMemo(() => {
-    const now = new Date()
-    const currentMonth = now.getMonth()
-    const currentYear = now.getFullYear()
-    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1
-    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear
-
-    const filterByMonth = (month: number, year: number) =>
+    const filterByRange = (start: Date, end: Date) =>
       transactions.filter((t) => {
         const transactionDate = new Date(t.date)
-        return (
-          transactionDate.getMonth() === month &&
-          transactionDate.getFullYear() === year &&
-          t.status === 'concluida'
-        )
+        return transactionDate >= start && transactionDate <= end && t.status === 'concluida'
       })
 
-    const currentMonthTransactions = filterByMonth(currentMonth, currentYear)
-    const prevMonthTransactions = filterByMonth(prevMonth, prevYear)
+    const currentTransactions = dateRange
+      ? filterByRange(dateRange.startDate, dateRange.endDate)
+      : transactions.filter((t) => t.status === 'concluida')
+
+    const prevTransactions = prevRange
+      ? filterByRange(prevRange.startDate, prevRange.endDate)
+      : []
 
     const calcStats = (txs: typeof transactions) => {
       const income = txs
@@ -52,8 +52,8 @@ export default function DashboardPage() {
       return { income, expenses, investments, balance: income - expenses - investments }
     }
 
-    const current = calcStats(currentMonthTransactions)
-    const prev = calcStats(prevMonthTransactions)
+    const current = calcStats(currentTransactions)
+    const prev = calcStats(prevTransactions)
 
     const calcTrend = (curr: number, previous: number) => {
       if (previous === 0) return { value: curr > 0 ? 100 : 0, isPositive: curr >= 0 }
@@ -73,7 +73,7 @@ export default function DashboardPage() {
         investments: calcTrend(current.investments, prev.investments),
       },
     }
-  }, [transactions])
+  }, [transactions, dateRange, prevRange])
 
   // Pegar últimas 5 transações
   const recentTransactions = useMemo(() => {
@@ -117,6 +117,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4">
+      {/* Period Selector */}
+      <PeriodSelector selected={selectedPeriod} onChange={setSelectedPeriod} />
+
       {/* Stats Cards */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         <StatsCard
@@ -151,8 +154,16 @@ export default function DashboardPage() {
 
       {/* Charts Row */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <FinancialEvolutionChart transactions={transactions} />
-        <ExpensesByCategoryChart transactions={transactions} />
+        <FinancialEvolutionChart
+          transactions={transactions}
+          startDate={dateRange?.startDate}
+          endDate={dateRange?.endDate}
+        />
+        <ExpensesByCategoryChart
+          transactions={transactions}
+          startDate={dateRange?.startDate}
+          endDate={dateRange?.endDate}
+        />
       </div>
 
       {/* Recent Transactions */}

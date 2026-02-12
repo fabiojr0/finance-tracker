@@ -17,18 +17,27 @@ import { formatCurrency } from '@/lib/utils/format-currency'
 
 interface TrendChartProps {
   transactions: TransactionWithCategory[]
+  startDate?: Date
+  endDate?: Date
 }
 
-export function TrendChart({ transactions }: TrendChartProps) {
+export function TrendChart({ transactions, startDate, endDate }: TrendChartProps) {
   const chartData = useMemo(() => {
     const months: { [key: string]: { receitas: number; despesas: number; saldo: number } } = {}
-    const now = new Date()
 
-    // Inicializar os últimos 12 meses
-    for (let i = 11; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    // Determinar range de meses
+    const end = endDate || new Date()
+    const start = startDate || new Date(end.getFullYear(), end.getMonth() - 11, 1)
+
+    const startMonth = new Date(start.getFullYear(), start.getMonth(), 1)
+    const endMonth = new Date(end.getFullYear(), end.getMonth(), 1)
+
+    // Inicializar meses no range
+    const current = new Date(startMonth)
+    while (current <= endMonth) {
+      const monthKey = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`
       months[monthKey] = { receitas: 0, despesas: 0, saldo: 0 }
+      current.setMonth(current.getMonth() + 1)
     }
 
     // Agregar transações por mês
@@ -63,14 +72,14 @@ export function TrendChart({ transactions }: TrendChartProps) {
         Saldo: saldoAcumulado,
       }
     })
-  }, [transactions])
+  }, [transactions, startDate, endDate])
 
   const hasData = chartData.some((data) => data.Receitas > 0 || data.Despesas > 0)
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Evolução Financeira (Últimos 12 Meses)</CardTitle>
+        <CardTitle>Evolução Financeira</CardTitle>
       </CardHeader>
       <CardContent>
         {!hasData ? (

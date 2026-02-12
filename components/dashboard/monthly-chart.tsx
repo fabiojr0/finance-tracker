@@ -17,19 +17,27 @@ import { formatCurrency } from '@/lib/utils/format-currency'
 
 interface MonthlyChartProps {
   transactions: TransactionWithCategory[]
+  startDate?: Date
+  endDate?: Date
 }
 
-export function MonthlyChart({ transactions }: MonthlyChartProps) {
+export function MonthlyChart({ transactions, startDate, endDate }: MonthlyChartProps) {
   const chartData = useMemo(() => {
-    // Pegar os últimos 6 meses
     const months: { [key: string]: { receitas: number; despesas: number } } = {}
-    const now = new Date()
 
-    // Inicializar os últimos 6 meses
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    // Determinar range de meses
+    const end = endDate || new Date()
+    const start = startDate || new Date(end.getFullYear(), end.getMonth() - 5, 1)
+
+    const startMonth = new Date(start.getFullYear(), start.getMonth(), 1)
+    const endMonth = new Date(end.getFullYear(), end.getMonth(), 1)
+
+    // Inicializar meses no range
+    const current = new Date(startMonth)
+    while (current <= endMonth) {
+      const monthKey = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`
       months[monthKey] = { receitas: 0, despesas: 0 }
+      current.setMonth(current.getMonth() + 1)
     }
 
     // Agregar transações por mês
@@ -60,14 +68,14 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
         Despesas: value.despesas,
       }
     })
-  }, [transactions])
+  }, [transactions, startDate, endDate])
 
   const hasData = chartData.some((data) => data.Receitas > 0 || data.Despesas > 0)
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Visão Mensal (Últimos 6 Meses)</CardTitle>
+        <CardTitle>Visão Mensal</CardTitle>
       </CardHeader>
       <CardContent>
         {!hasData ? (

@@ -1,13 +1,18 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import { Skeleton, SkeletonChart } from '@/components/shared/skeleton'
 import { CategoryChart } from '@/components/reports/category-chart'
 import { TrendChart } from '@/components/reports/trend-chart'
 import { MonthlyChart } from '@/components/dashboard/monthly-chart'
+import { PeriodSelector, getDateRange, PeriodKey } from '@/components/shared/period-selector'
 import { useFinance } from '@/lib/contexts/finance-context'
 
 export default function ReportsPage() {
   const { transactions, transactionsLoading: loading } = useFinance()
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>('last-12-months')
+
+  const dateRange = useMemo(() => getDateRange(selectedPeriod), [selectedPeriod])
 
   if (loading) {
     return (
@@ -34,9 +39,23 @@ export default function ReportsPage() {
         </p>
       </div>
 
-      <CategoryChart transactions={transactions} />
-      <TrendChart transactions={transactions} />
-      <MonthlyChart transactions={transactions} />
+      <PeriodSelector selected={selectedPeriod} onChange={setSelectedPeriod} />
+
+      <CategoryChart
+        transactions={transactions}
+        startDate={dateRange?.startDate}
+        endDate={dateRange?.endDate}
+      />
+      <TrendChart
+        transactions={transactions}
+        startDate={dateRange?.startDate}
+        endDate={dateRange?.endDate}
+      />
+      <MonthlyChart
+        transactions={transactions}
+        startDate={dateRange?.startDate}
+        endDate={dateRange?.endDate}
+      />
     </div>
   )
 }

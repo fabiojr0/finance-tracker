@@ -15,6 +15,8 @@ import { CategoryIcon } from '@/components/shared/category-icon'
 
 interface ExpensesByCategoryChartProps {
   transactions: TransactionWithCategory[]
+  startDate?: Date
+  endDate?: Date
 }
 
 const COLORS = [
@@ -28,18 +30,26 @@ const COLORS = [
   '#ec4899', // pink
 ]
 
-export function ExpensesByCategoryChart({ transactions }: ExpensesByCategoryChartProps) {
+export function ExpensesByCategoryChart({ transactions, startDate, endDate }: ExpensesByCategoryChartProps) {
   const { chartData, total } = useMemo(() => {
-    const now = new Date()
-    const currentMonth = now.getMonth()
-    const currentYear = now.getFullYear()
-
-    // Filtrar apenas despesas do mês atual
+    // Filtrar apenas despesas do período
     const currentMonthExpenses = transactions.filter((t) => {
       const transactionDate = new Date(t.date)
+
+      if (startDate && endDate) {
+        return (
+          transactionDate >= startDate &&
+          transactionDate <= endDate &&
+          t.type === 'despesa' &&
+          t.status === 'concluida'
+        )
+      }
+
+      // Fallback: mês atual
+      const now = new Date()
       return (
-        transactionDate.getMonth() === currentMonth &&
-        transactionDate.getFullYear() === currentYear &&
+        transactionDate.getMonth() === now.getMonth() &&
+        transactionDate.getFullYear() === now.getFullYear() &&
         t.type === 'despesa' &&
         t.status === 'concluida'
       )
@@ -72,7 +82,7 @@ export function ExpensesByCategoryChart({ transactions }: ExpensesByCategoryChar
     const totalAmount = data.reduce((sum, item) => sum + item.value, 0)
 
     return { chartData: data, total: totalAmount }
-  }, [transactions])
+  }, [transactions, startDate, endDate])
 
   const hasData = chartData.length > 0
 
@@ -85,7 +95,7 @@ export function ExpensesByCategoryChart({ transactions }: ExpensesByCategoryChar
         {!hasData ? (
           <div className="h-64 flex items-center justify-center border-2 border-dashed border-neutral-800 rounded-lg">
             <div className="text-center">
-              <p className="text-neutral-400 text-sm">Nenhuma despesa este mês</p>
+              <p className="text-neutral-400 text-sm">Nenhuma despesa neste período</p>
               <p className="text-xs text-neutral-500 mt-1">
                 Adicione despesas para visualizar
               </p>

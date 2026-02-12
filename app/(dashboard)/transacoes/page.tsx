@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import {
   Plus,
   Trash2,
@@ -26,6 +26,7 @@ import {
   TransactionFilters,
   FilterTag,
 } from '@/components/transactions/transaction-filter-modal'
+import { PeriodSelector, getDateRange, PeriodKey } from '@/components/shared/period-selector'
 import { Input } from '@/components/ui/input'
 import {
   Table,
@@ -57,6 +58,9 @@ export default function TransactionsPage() {
   // Filter modal
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
 
+  // Period selector
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>('all')
+
   // Filters
   const [filters, setFilters] = useState<TransactionFilters>({
     typeFilter: 'all',
@@ -66,6 +70,22 @@ export default function TransactionsPage() {
     startDate: '',
     endDate: '',
   })
+
+  const handlePeriodChange = useCallback((period: PeriodKey) => {
+    setSelectedPeriod(period)
+    const range = getDateRange(period)
+    if (range) {
+      const formatToDateStr = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      setFilters((prev) => ({
+        ...prev,
+        startDate: formatToDateStr(range.startDate),
+        endDate: formatToDateStr(range.endDate),
+      }))
+    } else {
+      setFilters((prev) => ({ ...prev, startDate: '', endDate: '' }))
+    }
+  }, [])
 
   // Sorting
   const [sortField, setSortField] = useState<SortField | null>('date')
@@ -170,6 +190,7 @@ export default function TransactionsPage() {
   }
 
   const clearFilters = () => {
+    setSelectedPeriod('all')
     setFilters({
       typeFilter: 'all',
       categoryFilter: 'all',
@@ -301,6 +322,9 @@ export default function TransactionsPage() {
           <span className="hidden sm:inline">Nova Transação</span>
         </Button>
       </div>
+
+      {/* Period Selector */}
+      <PeriodSelector selected={selectedPeriod} onChange={handlePeriodChange} showAll />
 
       {/* Filters */}
       <div className="space-y-2">

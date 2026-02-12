@@ -8,6 +8,8 @@ import { formatCurrency } from '@/lib/utils/format-currency'
 
 interface CategoryChartProps {
   transactions: TransactionWithCategory[]
+  startDate?: Date
+  endDate?: Date
 }
 
 const COLORS = [
@@ -23,20 +25,28 @@ const COLORS = [
   '#06b6d4', // cyan
 ]
 
-export function CategoryChart({ transactions }: CategoryChartProps) {
+export function CategoryChart({ transactions, startDate, endDate }: CategoryChartProps) {
   const chartData = useMemo(() => {
-    const now = new Date()
-    const currentMonth = now.getMonth()
-    const currentYear = now.getFullYear()
-
-    // Filtrar despesas do mês atual
+    // Filtrar despesas do período
     const expenses = transactions.filter((t) => {
       const date = new Date(t.date)
+
+      if (startDate && endDate) {
+        return (
+          t.type === 'despesa' &&
+          t.status === 'concluida' &&
+          date >= startDate &&
+          date <= endDate
+        )
+      }
+
+      // Fallback: mês atual
+      const now = new Date()
       return (
         t.type === 'despesa' &&
         t.status === 'concluida' &&
-        date.getMonth() === currentMonth &&
-        date.getFullYear() === currentYear
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear()
       )
     })
 
@@ -63,14 +73,14 @@ export function CategoryChart({ transactions }: CategoryChartProps) {
     return Array.from(categoryMap.values())
       .sort((a, b) => b.value - a.value)
       .slice(0, 10) // Top 10 categorias
-  }, [transactions])
+  }, [transactions, startDate, endDate])
 
   const hasData = chartData.length > 0
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Gastos por Categoria (Mês Atual)</CardTitle>
+        <CardTitle>Gastos por Categoria</CardTitle>
       </CardHeader>
       <CardContent>
         {!hasData ? (
