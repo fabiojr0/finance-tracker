@@ -12,12 +12,27 @@ import { SkeletonCard, SkeletonChart, SkeletonTransactionList } from '@/componen
 import { CategoryIcon } from '@/components/shared/category-icon'
 import { PeriodSelector, getDateRange, getPreviousPeriodRange, PeriodKey } from '@/components/shared/period-selector'
 import { useFinance } from '@/lib/contexts/finance-context'
+import { useUser } from '@/lib/hooks/use-user'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { formatDate } from '@/lib/utils/format-date'
 import Link from 'next/link'
 
+function getGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Bom dia'
+  if (hour < 18) return 'Boa tarde'
+  return 'Boa noite'
+}
+
+function getFirstName(email?: string) {
+  if (!email) return ''
+  const name = email.split('@')[0]
+  return name.charAt(0).toUpperCase() + name.slice(1)
+}
+
 export default function DashboardPage() {
   const { transactions, transactionsLoading: loading } = useFinance()
+  const { user } = useUser()
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>('this-month')
 
   const dateRange = useMemo(() => getDateRange(selectedPeriod), [selectedPeriod])
@@ -84,7 +99,12 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
+        {/* Welcome Skeleton */}
+        <div className="space-y-2">
+          <div className="h-8 w-64 bg-neutral-800 rounded-lg animate-pulse" />
+          <div className="h-5 w-48 bg-neutral-800/60 rounded animate-pulse" />
+        </div>
         {/* Stats Cards Skeleton */}
         <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
           <SkeletonCard />
@@ -93,9 +113,9 @@ export default function DashboardPage() {
           <SkeletonCard />
         </div>
         {/* Charts Skeleton */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <SkeletonChart />
-          <SkeletonChart />
+        <div className="grid gap-4 lg:grid-cols-7">
+          <div className="lg:col-span-4"><SkeletonChart /></div>
+          <div className="lg:col-span-3"><SkeletonChart /></div>
         </div>
         {/* Recent Transactions Skeleton */}
         <Card>
@@ -116,9 +136,19 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Period Selector */}
-      <PeriodSelector selected={selectedPeriod} onChange={setSelectedPeriod} />
+    <div className="space-y-6">
+      {/* Welcome Section */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+            {getGreeting()}, {getFirstName(user?.email)}
+          </h2>
+          <p className="text-sm sm:text-base text-neutral-400 mt-1">
+            Aqui está o resumo das suas finanças
+          </p>
+        </div>
+        <PeriodSelector selected={selectedPeriod} onChange={setSelectedPeriod} />
+      </div>
 
       {/* Stats Cards */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
@@ -152,22 +182,26 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Charts Row */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <FinancialEvolutionChart
-          transactions={transactions}
-          startDate={dateRange?.startDate}
-          endDate={dateRange?.endDate}
-        />
-        <ExpensesByCategoryChart
-          transactions={transactions}
-          startDate={dateRange?.startDate}
-          endDate={dateRange?.endDate}
-        />
+      {/* Charts Row - Asymmetric layout */}
+      <div className="grid gap-4 lg:grid-cols-7">
+        <div className="lg:col-span-4">
+          <FinancialEvolutionChart
+            transactions={transactions}
+            startDate={dateRange?.startDate}
+            endDate={dateRange?.endDate}
+          />
+        </div>
+        <div className="lg:col-span-3">
+          <ExpensesByCategoryChart
+            transactions={transactions}
+            startDate={dateRange?.startDate}
+            endDate={dateRange?.endDate}
+          />
+        </div>
       </div>
 
       {/* Recent Transactions */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader className="pb-3 px-4 sm:px-6">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
@@ -176,9 +210,12 @@ export default function DashboardPage() {
                 Últimas movimentações
               </p>
             </div>
-            <Link href="/transacoes" className="flex items-center gap-1 text-primary hover:text-primary-400 text-sm font-medium transition-colors flex-shrink-0">
+            <Link
+              href="/transacoes"
+              className="flex items-center gap-1.5 text-primary hover:text-primary-400 text-sm font-medium transition-colors flex-shrink-0 group/link"
+            >
               <span className="hidden sm:inline">Ver todas</span>
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 transition-transform group-hover/link:translate-x-0.5" />
             </Link>
           </div>
         </CardHeader>
@@ -186,7 +223,7 @@ export default function DashboardPage() {
           {recentTransactions.length === 0 ? (
             <EmptyState
               title="Nenhuma transação ainda"
-              description="Comece adicionando sua primeira transação para começar a acompanhar suas finanças."
+              description="Comece adicionando sua primeira transação para acompanhar suas finanças."
               icon={<Wallet className="h-12 w-12" />}
               action={
                 <Link href="/transacoes">
@@ -195,35 +232,35 @@ export default function DashboardPage() {
               }
             />
           ) : (
-            <div className="divide-y divide-neutral-800">
+            <div className="space-y-1">
               {recentTransactions.map((transaction) => (
                 <div
                   key={transaction.id}
-                  className="flex items-center justify-between py-3 sm:py-4 first:pt-0 last:pb-0 gap-3"
+                  className="flex items-center justify-between py-3 px-3 -mx-3 rounded-lg hover:bg-neutral-800/50 transition-colors gap-3 group/item cursor-default"
                 >
                   <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                     <div
-                      className={`flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-full flex-shrink-0 ${
+                      className={`flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-xl flex-shrink-0 transition-transform duration-200 group-hover/item:scale-105 ${
                         transaction.type === 'receita'
-                          ? 'bg-green-500/20'
+                          ? 'bg-emerald-500/15'
                           : transaction.type === 'investimento'
-                          ? 'bg-blue-500/20'
-                          : 'bg-red-500/20'
+                          ? 'bg-blue-500/15'
+                          : 'bg-red-500/15'
                       }`}
                     >
                       {transaction.type === 'receita' ? (
-                        <ArrowDownLeft className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
+                        <ArrowDownLeft className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-400" />
                       ) : transaction.type === 'investimento' ? (
-                        <LineChart className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
+                        <LineChart className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
                       ) : (
-                        <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
+                        <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" />
                       )}
                     </div>
                     <div className="min-w-0">
                       <p className="font-medium text-white text-sm sm:text-base truncate">
                         {transaction.description}
                       </p>
-                      <p className="text-xs sm:text-sm text-neutral-500 flex items-center gap-1 truncate">
+                      <p className="text-xs sm:text-sm text-neutral-500 flex items-center gap-1.5 truncate">
                         {transaction.category ? (
                           <>
                             <CategoryIcon icon={transaction.category.icon} size="sm" className="flex-shrink-0" />
@@ -232,17 +269,18 @@ export default function DashboardPage() {
                         ) : (
                           'Sem categoria'
                         )}
-                        <span className="hidden sm:inline"> • {formatDate(transaction.date)}</span>
+                        <span className="hidden sm:inline text-neutral-600">•</span>
+                        <span className="hidden sm:inline">{formatDate(transaction.date)}</span>
                       </p>
                     </div>
                   </div>
                   <span
-                    className={`text-sm sm:text-base font-semibold flex-shrink-0 ${
+                    className={`text-sm sm:text-base font-semibold flex-shrink-0 tabular-nums ${
                       transaction.type === 'receita'
-                        ? 'text-green-500'
+                        ? 'text-emerald-400'
                         : transaction.type === 'investimento'
-                        ? 'text-blue-500'
-                        : 'text-red-500'
+                        ? 'text-blue-400'
+                        : 'text-red-400'
                     }`}
                   >
                     {transaction.type === 'receita' ? '+ ' : '- '}

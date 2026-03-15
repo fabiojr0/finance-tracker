@@ -14,6 +14,7 @@ import {
   ArrowUpRight,
   ArrowLeftRight,
   LineChart,
+  Receipt,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -93,7 +94,6 @@ export default function TransactionsPage() {
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      // Cycle: desc → asc → null (deselect) → desc
       if (sortDirection === 'desc') {
         setSortDirection('asc')
       } else if (sortDirection === 'asc') {
@@ -120,7 +120,6 @@ export default function TransactionsPage() {
   const filteredAndSortedTransactions = useMemo(() => {
     let result = [...transactions]
 
-    // Apply filters
     if (filters.typeFilter !== 'all') {
       result = result.filter((t) => t.type === filters.typeFilter)
     }
@@ -138,7 +137,6 @@ export default function TransactionsPage() {
           t.category?.name?.toLowerCase().includes(query)
       )
     }
-    // Date range filter
     if (filters.startDate) {
       const start = new Date(filters.startDate)
       start.setHours(0, 0, 0, 0)
@@ -150,7 +148,6 @@ export default function TransactionsPage() {
       result = result.filter((t) => new Date(t.date) <= end)
     }
 
-    // Apply sorting (only if a field is selected)
     if (sortField && sortDirection) {
       result.sort((a, b) => {
         let comparison = 0
@@ -182,6 +179,14 @@ export default function TransactionsPage() {
 
     return result
   }, [transactions, filters, sortField, sortDirection])
+
+  // Summary stats for the filtered transactions
+  const summary = useMemo(() => {
+    const completed = filteredAndSortedTransactions.filter(t => t.status === 'concluida')
+    const income = completed.filter(t => t.type === 'receita').reduce((s, t) => s + Number(t.amount), 0)
+    const expenses = completed.filter(t => t.type === 'despesa').reduce((s, t) => s + Number(t.amount), 0)
+    return { income, expenses, balance: income - expenses }
+  }, [filteredAndSortedTransactions])
 
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta transação?')) {
@@ -240,17 +245,16 @@ export default function TransactionsPage() {
     return category?.name || categoryId
   }
 
-
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'receita':
-        return <ArrowDownLeft className="h-4 w-4 text-green-500" />
+        return <ArrowDownLeft className="h-4 w-4 text-emerald-400" />
       case 'despesa':
-        return <ArrowUpRight className="h-4 w-4 text-red-500" />
+        return <ArrowUpRight className="h-4 w-4 text-red-400" />
       case 'investimento':
-        return <LineChart className="h-4 w-4 text-blue-500" />
+        return <LineChart className="h-4 w-4 text-blue-400" />
       case 'transferencia':
-        return <ArrowLeftRight className="h-4 w-4 text-yellow-500" />
+        return <ArrowLeftRight className="h-4 w-4 text-amber-400" />
       default:
         return null
     }
@@ -258,14 +262,14 @@ export default function TransactionsPage() {
 
   const getTypeBadge = (type: string) => {
     const variants: Record<string, { bg: string; text: string; label: string }> = {
-      receita: { bg: 'bg-green-500/20', text: 'text-green-500', label: 'Receita' },
-      despesa: { bg: 'bg-red-500/20', text: 'text-red-500', label: 'Despesa' },
-      investimento: { bg: 'bg-blue-500/20', text: 'text-blue-500', label: 'Investimento' },
-      transferencia: { bg: 'bg-yellow-500/20', text: 'text-yellow-500', label: 'Transferência' },
+      receita: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', label: 'Receita' },
+      despesa: { bg: 'bg-red-500/15', text: 'text-red-400', label: 'Despesa' },
+      investimento: { bg: 'bg-blue-500/15', text: 'text-blue-400', label: 'Investimento' },
+      transferencia: { bg: 'bg-amber-500/15', text: 'text-amber-400', label: 'Transferência' },
     }
     const variant = variants[type] || variants.despesa
     return (
-      <span className={cn('px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap', variant.bg, variant.text)}>
+      <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap', variant.bg, variant.text)}>
         {variant.label}
       </span>
     )
@@ -273,13 +277,13 @@ export default function TransactionsPage() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { bg: string; text: string; label: string }> = {
-      concluida: { bg: 'bg-green-500/20', text: 'text-green-500', label: 'Concluída' },
-      pendente: { bg: 'bg-yellow-500/20', text: 'text-yellow-500', label: 'Pendente' },
-      cancelada: { bg: 'bg-neutral-500/20', text: 'text-neutral-400', label: 'Cancelada' },
+      concluida: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', label: 'Concluída' },
+      pendente: { bg: 'bg-amber-500/15', text: 'text-amber-400', label: 'Pendente' },
+      cancelada: { bg: 'bg-neutral-500/15', text: 'text-neutral-400', label: 'Cancelada' },
     }
     const variant = variants[status] || variants.pendente
     return (
-      <span className={cn('px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap', variant.bg, variant.text)}>
+      <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap', variant.bg, variant.text)}>
         {variant.label}
       </span>
     )
@@ -287,40 +291,64 @@ export default function TransactionsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        {/* Header Skeleton */}
+      <div className="space-y-6">
         <div className="flex items-center justify-between gap-3">
           <div className="space-y-2">
-            <Skeleton className="h-7 w-32" />
-            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-5 w-32" />
           </div>
           <Skeleton className="h-9 w-9 sm:h-10 sm:w-36 rounded-md" />
         </div>
-        {/* Filters Skeleton */}
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-9 w-24" />
+        <div className="grid grid-cols-3 gap-3">
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
         </div>
-        {/* Table Skeleton */}
         <SkeletonTable rows={8} />
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-neutral-200">Transações</h1>
-          <p className="text-neutral-400 text-xs sm:text-sm mt-0.5">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Transações</h1>
+          <p className="text-neutral-400 text-sm mt-1">
             {filteredAndSortedTransactions.length} transações
             {hasActiveFilters && ` (filtrado de ${transactions.length})`}
           </p>
         </div>
-        <Button onClick={openModal} size="sm" className="sm:h-10">
-          <Plus className="h-4 w-4 sm:mr-2" />
+        <Button onClick={openModal} size="sm" className="sm:h-10 gap-1.5">
+          <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">Nova Transação</span>
         </Button>
+      </div>
+
+      {/* Summary mini cards */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 sm:p-4">
+          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">Receitas</p>
+          <p className="text-sm sm:text-lg font-bold text-emerald-400 mt-0.5 truncate tabular-nums">
+            {formatCurrency(summary.income)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 sm:p-4">
+          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">Despesas</p>
+          <p className="text-sm sm:text-lg font-bold text-red-400 mt-0.5 truncate tabular-nums">
+            {formatCurrency(summary.expenses)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-3 sm:p-4">
+          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">Saldo</p>
+          <p className={cn(
+            'text-sm sm:text-lg font-bold mt-0.5 truncate tabular-nums',
+            summary.balance >= 0 ? 'text-emerald-400' : 'text-red-400'
+          )}>
+            {formatCurrency(summary.balance)}
+          </p>
+        </div>
       </div>
 
       {/* Period Selector */}
@@ -339,12 +367,12 @@ export default function TransactionsPage() {
             variant="outline"
             size="sm"
             onClick={() => setIsFilterModalOpen(true)}
-            className="h-9"
+            className="h-9 gap-1.5"
           >
-            <Filter className="h-4 w-4 sm:mr-2" />
+            <Filter className="h-4 w-4" />
             <span className="hidden sm:inline">Filtrar</span>
             {activeFilterCount > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-primary text-primary-foreground">
+              <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-primary text-primary-foreground">
                 {activeFilterCount}
               </span>
             )}
@@ -406,17 +434,18 @@ export default function TransactionsPage() {
       />
 
       {/* Table */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardContent className="p-0">
           {filteredAndSortedTransactions.length === 0 ? (
-            <div className="p-4 sm:p-6">
+            <div className="p-6 sm:p-8">
               <EmptyState
                 title={hasActiveFilters ? 'Nenhuma transação encontrada' : 'Nenhuma transação ainda'}
                 description={
                   hasActiveFilters
                     ? 'Tente ajustar os filtros para ver mais resultados.'
-                    : 'Comece adicionando sua primeira transação para começar a acompanhar suas finanças.'
+                    : 'Comece adicionando sua primeira transação para acompanhar suas finanças.'
                 }
+                icon={<Receipt className="h-12 w-12" />}
                 action={
                   hasActiveFilters ? (
                     <Button variant="outline" onClick={clearFilters}>
@@ -435,7 +464,7 @@ export default function TransactionsPage() {
             <div className="overflow-x-auto max-h-[60vh] sm:max-h-none overflow-y-auto sm:overflow-y-visible">
               <Table>
                 <TableHeader>
-                  <TableRow className="hover:bg-transparent border-neutral-800">
+                  <TableRow className="hover:bg-transparent border-neutral-800 bg-neutral-900/50">
                     <TableHead
                       className="cursor-pointer select-none min-w-[180px]"
                       onClick={() => handleSort('description')}
@@ -495,19 +524,19 @@ export default function TransactionsPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredAndSortedTransactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell className="py-2 sm:py-4">
-                        <div className="flex items-center gap-2 sm:gap-3">
+                    <TableRow key={transaction.id} className="group/row">
+                      <TableCell className="py-2.5 sm:py-4">
+                        <div className="flex items-center gap-2.5 sm:gap-3">
                           <div
                             className={cn(
-                              'flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-full flex-shrink-0',
+                              'flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-xl flex-shrink-0 transition-transform duration-200 group-hover/row:scale-105',
                               transaction.type === 'receita'
-                                ? 'bg-green-500/20'
+                                ? 'bg-emerald-500/15'
                                 : transaction.type === 'investimento'
-                                ? 'bg-blue-500/20'
+                                ? 'bg-blue-500/15'
                                 : transaction.type === 'transferencia'
-                                ? 'bg-yellow-500/20'
-                                : 'bg-red-500/20'
+                                ? 'bg-amber-500/15'
+                                : 'bg-red-500/15'
                             )}
                           >
                             {getTypeIcon(transaction.type)}
@@ -516,7 +545,6 @@ export default function TransactionsPage() {
                             <p className="font-medium text-neutral-200 text-sm sm:text-base truncate max-w-[120px] sm:max-w-none">
                               {transaction.description}
                             </p>
-                            {/* Mobile: show category under description */}
                             <p className="text-xs text-neutral-500 md:hidden flex items-center gap-1">
                               {transaction.category ? (
                                 <>
@@ -548,12 +576,12 @@ export default function TransactionsPage() {
                       <TableCell className="text-right">
                         <span
                           className={cn(
-                            'font-semibold text-sm sm:text-base whitespace-nowrap',
+                            'font-semibold text-sm sm:text-base whitespace-nowrap tabular-nums',
                             transaction.type === 'receita'
-                              ? 'text-green-500'
+                              ? 'text-emerald-400'
                               : transaction.type === 'investimento'
-                              ? 'text-blue-500'
-                              : 'text-red-500'
+                              ? 'text-blue-400'
+                              : 'text-red-400'
                           )}
                         >
                           {transaction.type === 'receita' ? '+' : '-'}
@@ -563,7 +591,7 @@ export default function TransactionsPage() {
                       <TableCell className="px-2 sm:px-4">
                         <DropdownMenu
                           trigger={
-                            <Button variant="ghost" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 p-0">
+                            <Button variant="ghost" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 p-0 opacity-0 group-hover/row:opacity-100 transition-opacity">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           }

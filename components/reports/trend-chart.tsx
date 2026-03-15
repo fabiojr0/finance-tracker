@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TrendingUp } from 'lucide-react'
 import {
   LineChart,
   Line,
@@ -25,14 +26,12 @@ export function TrendChart({ transactions, startDate, endDate }: TrendChartProps
   const chartData = useMemo(() => {
     const months: { [key: string]: { receitas: number; despesas: number; saldo: number } } = {}
 
-    // Determinar range de meses
     const end = endDate || new Date()
     const start = startDate || new Date(end.getFullYear(), end.getMonth() - 11, 1)
 
     const startMonth = new Date(start.getFullYear(), start.getMonth(), 1)
     const endMonth = new Date(end.getFullYear(), end.getMonth(), 1)
 
-    // Inicializar meses no range
     const current = new Date(startMonth)
     while (current <= endMonth) {
       const monthKey = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`
@@ -40,7 +39,6 @@ export function TrendChart({ transactions, startDate, endDate }: TrendChartProps
       current.setMonth(current.getMonth() + 1)
     }
 
-    // Agregar transações por mês
     transactions.forEach((transaction) => {
       if (transaction.status !== 'concluida') return
 
@@ -56,7 +54,6 @@ export function TrendChart({ transactions, startDate, endDate }: TrendChartProps
       }
     })
 
-    // Calcular saldo acumulado
     let saldoAcumulado = 0
     return Object.entries(months).map(([key, value]) => {
       const [year, month] = key.split('-')
@@ -76,17 +73,38 @@ export function TrendChart({ transactions, startDate, endDate }: TrendChartProps
 
   const hasData = chartData.some((data) => data.Receitas > 0 || data.Despesas > 0)
 
+  const tooltipStyle = {
+    contentStyle: {
+      backgroundColor: '#1a1a1a',
+      border: '1px solid #333',
+      borderRadius: '12px',
+      fontSize: '12px',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+      padding: '12px',
+    },
+    itemStyle: { color: '#e5e5e5', padding: '2px 0' },
+    labelStyle: { color: '#a3a3a3', fontWeight: 600, marginBottom: '4px' },
+  }
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Evolução Financeira</CardTitle>
+      <CardHeader className="px-4 sm:px-6">
+        <div className="flex items-center gap-2">
+          <div className="rounded-lg bg-orange-500/15 p-1.5">
+            <TrendingUp className="h-4 w-4 text-orange-400" />
+          </div>
+          <CardTitle className="text-base sm:text-lg">Evolução Financeira</CardTitle>
+        </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-2 sm:px-6">
         {!hasData ? (
-          <div className="h-80 flex items-center justify-center border-2 border-dashed border-neutral-800 rounded-lg">
+          <div className="h-80 flex items-center justify-center border border-dashed border-neutral-800 rounded-xl">
             <div className="text-center">
-              <p className="text-neutral-400">Nenhum dado para exibir</p>
-              <p className="text-sm text-neutral-500 mt-1">
+              <div className="mx-auto mb-3 rounded-full bg-neutral-800/60 p-3 w-fit">
+                <TrendingUp className="h-6 w-6 text-neutral-500" />
+              </div>
+              <p className="text-neutral-400 text-sm font-medium">Nenhum dado para exibir</p>
+              <p className="text-xs text-neutral-500 mt-1">
                 Adicione transações para visualizar o gráfico
               </p>
             </div>
@@ -94,66 +112,65 @@ export function TrendChart({ transactions, startDate, endDate }: TrendChartProps
         ) : (
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
+              <LineChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
                 <XAxis
                   dataKey="name"
-                  stroke="#a3a3a3"
+                  stroke="#525252"
                   style={{ fontSize: '11px' }}
+                  axisLine={false}
+                  tickLine={false}
                   angle={-45}
                   textAnchor="end"
                   height={60}
+                  dy={8}
                 />
                 <YAxis
-                  stroke="#a3a3a3"
-                  style={{ fontSize: '12px' }}
-                  tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
+                  stroke="#525252"
+                  style={{ fontSize: '11px' }}
+                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                  axisLine={false}
+                  tickLine={false}
+                  dx={-4}
                 />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#171717',
-                    border: '1px solid #404040',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                  itemStyle={{
-                    color: '#f5f5f5',
-                  }}
-                  labelStyle={{
-                    color: '#a3a3a3',
-                    fontWeight: 500,
-                  }}
+                  {...tooltipStyle}
                   formatter={(value) =>
                     typeof value === 'number' ? formatCurrency(value) : 'R$ 0,00'
                   }
+                  cursor={{ stroke: '#525252', strokeDasharray: '4 4' }}
                 />
                 <Legend
-                  wrapperStyle={{ color: '#f5f5f5' }}
-                  iconType="line"
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: '12px', paddingTop: '12px' }}
+                  formatter={(value) => (
+                    <span style={{ color: '#a3a3a3' }}>{value}</span>
+                  )}
                 />
                 <Line
                   type="monotone"
                   dataKey="Receitas"
-                  stroke="#22c55e"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
+                  stroke="#34d399"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 5, fill: '#34d399', stroke: '#171717', strokeWidth: 2 }}
                 />
                 <Line
                   type="monotone"
                   dataKey="Despesas"
-                  stroke="#ef4444"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
+                  stroke="#f87171"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 5, fill: '#f87171', stroke: '#171717', strokeWidth: 2 }}
                 />
                 <Line
                   type="monotone"
                   dataKey="Saldo"
-                  stroke="#f97316"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
+                  stroke="#fb923c"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 5, fill: '#fb923c', stroke: '#171717', strokeWidth: 2 }}
                 />
               </LineChart>
             </ResponsiveContainer>

@@ -1,7 +1,6 @@
 'use client'
 
 import { cn } from '@/lib/utils/cn'
-import { Calendar } from 'lucide-react'
 
 export type PeriodKey =
   | 'all'
@@ -87,18 +86,17 @@ export function PeriodSelector({ selected, onChange, showAll = false, className 
   const options = showAll ? [ALL_OPTION, ...PERIOD_OPTIONS] : PERIOD_OPTIONS
 
   return (
-    <div className={cn('flex items-center gap-1.5', className)}>
-      <Calendar className="h-4 w-4 text-neutral-500 flex-shrink-0 hidden sm:block" />
-      <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+    <div className={cn('flex items-center gap-2', className)}>
+      <div className="flex items-center gap-1 bg-neutral-900/80 border border-neutral-800 rounded-xl p-1 overflow-x-auto scrollbar-hide">
         {options.map((option) => (
           <button
             key={option.key}
             onClick={() => onChange(option.key)}
             className={cn(
-              'px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors',
+              'px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200',
               selected === option.key
-                ? 'bg-primary/20 text-primary'
-                : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+                ? 'bg-primary/20 text-primary shadow-sm shadow-primary/10'
+                : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
             )}
           >
             <span className="sm:hidden">{option.shortLabel}</span>
