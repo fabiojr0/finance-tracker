@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Outfit } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+const outfit = Outfit({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'] })
 
 export const metadata: Metadata = {
-  title: 'Finance Tracker - Monitore suas Finanças',
-  description: 'Aplicação moderna para monitoramento de finanças pessoais',
+  title: 'Finance Tracker — Controle Financeiro Inteligente',
+  description: 'Controle suas receitas, despesas e investimentos com dashboards interativos e relatórios inteligentes.',
 }
 
 export default function RootLayout({
@@ -16,7 +16,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={inter.className} suppressHydrationWarning>{children}</body>
+      <body className={outfit.className} suppressHydrationWarning>{children}</body>
     </html>
   )
 }
