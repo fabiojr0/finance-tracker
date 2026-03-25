@@ -320,7 +320,7 @@ export default function TransactionsPage() {
             {hasActiveFilters && ` (filtrado de ${transactions.length})`}
           </p>
         </div>
-        <Button onClick={openModal} size="sm" className="sm:h-10 gap-1.5">
+        <Button onClick={() => openModal()} size="sm" className="sm:h-10 gap-1.5">
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">Nova Transação</span>
         </Button>
@@ -452,7 +452,7 @@ export default function TransactionsPage() {
                       Limpar Filtros
                     </Button>
                   ) : (
-                    <Button onClick={openModal}>
+                    <Button onClick={() => openModal()}>
                       <Plus className="h-4 w-4 mr-2" />
                       Adicionar Transação
                     </Button>

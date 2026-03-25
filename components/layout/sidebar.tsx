@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   ArrowDownUp,
   Tag,
+  CalendarDays,
   BarChart3,
   Settings,
   X,
@@ -35,6 +36,11 @@ const menuItems = [
     href: '/categorias',
     label: UI_TEXT.categories.title,
     icon: Tag,
+  },
+  {
+    href: '/calendario',
+    label: UI_TEXT.calendar.title,
+    icon: CalendarDays,
   },
   {
     href: '/relatorios',

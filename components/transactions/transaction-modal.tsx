@@ -8,7 +8,7 @@ import { CreateTransactionInput, TransactionWithCategory } from '@/types/transac
 
 interface TransactionModalContextType {
   isOpen: boolean
-  openModal: () => void
+  openModal: (defaultDate?: string) => void
   openEditModal: (transaction: TransactionWithCategory) => void
   closeModal: () => void
 }
@@ -30,9 +30,11 @@ interface TransactionModalProviderProps {
 export function TransactionModalProvider({ children }: TransactionModalProviderProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null)
+  const [defaultDate, setDefaultDate] = useState<string | undefined>(undefined)
 
-  const openModal = useCallback(() => {
+  const openModal = useCallback((date?: string) => {
     setEditingTransaction(null)
+    setDefaultDate(date)
     setIsOpen(true)
   }, [])
 
@@ -44,12 +46,13 @@ export function TransactionModalProvider({ children }: TransactionModalProviderP
   const closeModal = useCallback(() => {
     setIsOpen(false)
     setEditingTransaction(null)
+    setDefaultDate(undefined)
   }, [])
 
   return (
     <TransactionModalContext.Provider value={{ isOpen, openModal, openEditModal, closeModal }}>
       {children}
-      <TransactionModal isOpen={isOpen} onClose={closeModal} editingTransaction={editingTransaction} />
+      <TransactionModal isOpen={isOpen} onClose={closeModal} editingTransaction={editingTransaction} defaultDate={defaultDate} />
     </TransactionModalContext.Provider>
   )
 }
@@ -58,10 +61,11 @@ interface TransactionModalProps {
   isOpen: boolean
   onClose: () => void
   editingTransaction: TransactionWithCategory | null
+  defaultDate?: string
 }
 
-function TransactionModal({ isOpen, onClose, editingTransaction }: TransactionModalProps) {
-  const { createTransaction, updateTransaction } = useFinance()
+function TransactionModal({ isOpen, onClose, editingTransaction, defaultDate }: TransactionModalProps) {
+  const { createTransaction, updateTransaction, deleteTransaction } = useFinance()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (data: CreateTransactionInput) => {
@@ -78,6 +82,16 @@ function TransactionModal({ isOpen, onClose, editingTransaction }: TransactionMo
     }
   }
 
+  const handleDelete = async () => {
+    if (!editingTransaction) return
+    if (confirm('Tem certeza que deseja excluir esta transação?')) {
+      setIsSubmitting(true)
+      const { error } = await deleteTransaction(editingTransaction.id)
+      setIsSubmitting(false)
+      if (!error) onClose()
+    }
+  }
+
   const defaultValues = editingTransaction
     ? {
         type: editingTransaction.type as CreateTransactionInput['type'],
@@ -88,6 +102,8 @@ function TransactionModal({ isOpen, onClose, editingTransaction }: TransactionMo
         notes: editingTransaction.notes || '',
         status: editingTransaction.status as CreateTransactionInput['status'],
       }
+    : defaultDate
+    ? { type: 'despesa' as const, date: defaultDate, status: 'concluida' as const }
     : undefined
 
   return (
@@ -100,6 +116,7 @@ function TransactionModal({ isOpen, onClose, editingTransaction }: TransactionMo
           key={editingTransaction?.id || 'new'}
           onSubmit={handleSubmit}
           onCancel={onClose}
+          onDelete={editingTransaction ? handleDelete : undefined}
           isLoading={isSubmitting}
           defaultValues={defaultValues}
         />

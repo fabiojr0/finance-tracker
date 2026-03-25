@@ -66,6 +66,15 @@ export const UI_TEXT = {
     incomeCategories: 'Categorias de Receita',
     expenseCategories: 'Categorias de Despesa',
   },
+  calendar: {
+    title: 'Calendário',
+    viewYear: 'Ano',
+    viewMonth: 'Mês',
+    viewWeek: 'Semana',
+    today: 'Hoje',
+    addTransaction: 'Nova Transação',
+    noTransactions: 'Sem transações',
+  },
   reports: {
     title: 'Relatórios',
     spendingByCategory: 'Gastos por Categoria',

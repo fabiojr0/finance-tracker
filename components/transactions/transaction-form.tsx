@@ -29,6 +29,7 @@ type TransactionFormData = z.infer<typeof transactionSchema>
 interface TransactionFormProps {
   onSubmit: (data: CreateTransactionInput) => Promise<void>
   onCancel?: () => void
+  onDelete?: () => void
   defaultValues?: Partial<TransactionFormData>
   isLoading?: boolean
 }
@@ -75,6 +76,7 @@ const typeOptions = [
 export function TransactionForm({
   onSubmit,
   onCancel,
+  onDelete,
   defaultValues,
   isLoading,
 }: TransactionFormProps) {
@@ -316,22 +318,38 @@ export function TransactionForm({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-end gap-2 sm:gap-3 pt-2 border-t border-neutral-800">
-        {onCancel && (
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onCancel}
-            disabled={isLoading}
-            size="sm"
-            className="sm:h-10 px-4 sm:px-6"
-          >
-            Cancelar
+      <div className="flex items-center justify-between pt-2 border-t border-neutral-800">
+        <div>
+          {onDelete && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onDelete}
+              disabled={isLoading}
+              size="sm"
+              className="sm:h-10 px-3 sm:px-4 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+            >
+              Excluir
+            </Button>
+          )}
+        </div>
+        <div className="flex gap-2 sm:gap-3">
+          {onCancel && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onCancel}
+              disabled={isLoading}
+              size="sm"
+              className="sm:h-10 px-4 sm:px-6"
+            >
+              Cancelar
+            </Button>
+          )}
+          <Button type="submit" disabled={isLoading} size="sm" className="sm:h-10 px-4 sm:px-6">
+            {isLoading ? 'Salvando...' : 'Salvar'}
           </Button>
-        )}
-        <Button type="submit" disabled={isLoading} size="sm" className="sm:h-10 px-4 sm:px-6">
-          {isLoading ? 'Salvando...' : 'Salvar'}
-        </Button>
+        </div>
       </div>
     </form>
   )

@@ -76,7 +76,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             </span>
           </button>
 
-          <Button size="sm" className="gap-1.5 h-9" onClick={openModal}>
+          <Button size="sm" className="gap-1.5 h-9" onClick={() => openModal()}>
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Nova Transação</span>
           </Button>
