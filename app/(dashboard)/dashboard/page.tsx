@@ -33,26 +33,42 @@ function getFirstName(email?: string) {
 export default function DashboardPage() {
   const { transactions, transactionsLoading: loading } = useFinance()
   const { user } = useUser()
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>('this-month')
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>('custom')
 
   const dateRange = useMemo(() => getDateRange(selectedPeriod), [selectedPeriod])
   const prevRange = useMemo(() => getPreviousPeriodRange(selectedPeriod), [selectedPeriod])
 
-  // Calcular estatísticas do período selecionado e anterior
+  // Estatísticas: custom = mês atual, outros = período selecionado
   const stats = useMemo(() => {
+    const now = new Date()
+
     const filterByRange = (start: Date, end: Date) =>
       transactions.filter((t) => {
-        const transactionDate = new Date(t.date)
-        return transactionDate >= start && transactionDate <= end && t.status === 'concluida'
+        const d = new Date(t.date)
+        return d >= start && d <= end && t.status === 'concluida'
       })
 
-    const currentTransactions = dateRange
-      ? filterByRange(dateRange.startDate, dateRange.endDate)
-      : transactions.filter((t) => t.status === 'concluida')
+    let currentTransactions
+    let prevTransactions
 
-    const prevTransactions = prevRange
-      ? filterByRange(prevRange.startDate, prevRange.endDate)
-      : []
+    if (selectedPeriod === 'custom') {
+      // Custom: cards mostram mês atual, trend vs mês anterior
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+      const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
+
+      currentTransactions = filterByRange(currentMonthStart, currentMonthEnd)
+      prevTransactions = filterByRange(prevMonthStart, prevMonthEnd)
+    } else if (dateRange) {
+      currentTransactions = filterByRange(dateRange.startDate, dateRange.endDate)
+      prevTransactions = prevRange
+        ? filterByRange(prevRange.startDate, prevRange.endDate)
+        : []
+    } else {
+      currentTransactions = transactions.filter((t) => t.status === 'concluida')
+      prevTransactions = [] as typeof transactions
+    }
 
     const calcStats = (txs: typeof transactions) => {
       const income = txs
@@ -88,7 +104,7 @@ export default function DashboardPage() {
         investments: calcTrend(current.investments, prev.investments),
       },
     }
-  }, [transactions, dateRange, prevRange])
+  }, [transactions, selectedPeriod, dateRange, prevRange])
 
   // Pegar últimas 5 transações
   const recentTransactions = useMemo(() => {
@@ -147,7 +163,7 @@ export default function DashboardPage() {
             Aqui está o resumo das suas finanças
           </p>
         </div>
-        <PeriodSelector selected={selectedPeriod} onChange={setSelectedPeriod} />
+        <PeriodSelector selected={selectedPeriod} onChange={setSelectedPeriod} showCustom />
       </div>
 
       {/* Stats Cards */}

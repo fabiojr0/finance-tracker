@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils/cn'
 
 export type PeriodKey =
   | 'all'
+  | 'custom'
   | 'this-month'
   | 'last-month'
   | 'last-3-months'
@@ -27,16 +28,18 @@ const PERIOD_OPTIONS: PeriodOption[] = [
 ]
 
 const ALL_OPTION: PeriodOption = { key: 'all', label: 'Todos', shortLabel: 'Todos' }
+const CUSTOM_OPTION: PeriodOption = { key: 'custom', label: 'Personalizado', shortLabel: 'Person.' }
 
 interface PeriodSelectorProps {
   selected: PeriodKey
   onChange: (period: PeriodKey) => void
   showAll?: boolean
+  showCustom?: boolean
   className?: string
 }
 
 export function getDateRange(period: PeriodKey): { startDate: Date; endDate: Date } | null {
-  if (period === 'all') return null
+  if (period === 'all' || period === 'custom') return null
 
   const now = new Date()
   const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
@@ -82,8 +85,12 @@ export function getPreviousPeriodRange(period: PeriodKey): { startDate: Date; en
   return { startDate, endDate }
 }
 
-export function PeriodSelector({ selected, onChange, showAll = false, className }: PeriodSelectorProps) {
-  const options = showAll ? [ALL_OPTION, ...PERIOD_OPTIONS] : PERIOD_OPTIONS
+export function PeriodSelector({ selected, onChange, showAll = false, showCustom = false, className }: PeriodSelectorProps) {
+  const options = [
+    ...(showCustom ? [CUSTOM_OPTION] : []),
+    ...(showAll ? [ALL_OPTION] : []),
+    ...PERIOD_OPTIONS,
+  ]
 
   return (
     <div className={cn('flex items-center gap-2', className)}>

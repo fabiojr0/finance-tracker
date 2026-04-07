@@ -33,28 +33,31 @@ const COLORS = [
 
 export function ExpensesByCategoryChart({ transactions, startDate, endDate }: ExpensesByCategoryChartProps) {
   const { chartData, total } = useMemo(() => {
-    // Filtrar apenas despesas do período
-    const currentMonthExpenses = transactions.filter((t) => {
-      const transactionDate = new Date(t.date)
+    let currentMonthExpenses
 
-      if (startDate && endDate) {
-        return (
-          transactionDate >= startDate &&
-          transactionDate <= endDate &&
-          t.type === 'despesa' &&
-          t.status === 'concluida'
-        )
-      }
+    if (startDate && endDate) {
+      // Modo com range
+      currentMonthExpenses = transactions.filter((t) => {
+        const d = new Date(t.date)
+        return d >= startDate && d <= endDate && t.type === 'despesa' && t.status === 'concluida'
+      })
+    } else {
+      // Modo personalizado: últimos 12 meses com transações
+      const monthsWithData = new Set<string>()
+      transactions.forEach((t) => {
+        if (t.status !== 'concluida') return
+        const d = new Date(t.date)
+        monthsWithData.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+      })
+      const validMonths = new Set([...monthsWithData].sort().slice(-12))
 
-      // Fallback: mês atual
-      const now = new Date()
-      return (
-        transactionDate.getMonth() === now.getMonth() &&
-        transactionDate.getFullYear() === now.getFullYear() &&
-        t.type === 'despesa' &&
-        t.status === 'concluida'
-      )
-    })
+      currentMonthExpenses = transactions.filter((t) => {
+        if (t.type !== 'despesa' || t.status !== 'concluida') return false
+        const d = new Date(t.date)
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        return validMonths.has(key)
+      })
+    }
 
     // Agrupar por categoria
     const categoryMap: { [key: string]: { name: string; value: number; icon: string | null; color: string | null } } = {}

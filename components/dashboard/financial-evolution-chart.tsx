@@ -26,42 +26,50 @@ export function FinancialEvolutionChart({ transactions, startDate, endDate }: Fi
   const chartData = useMemo(() => {
     const months: { [key: string]: { receitas: number; despesas: number; investimentos: number } } = {}
 
-    // Determinar range de meses
-    const end = endDate || new Date()
-    const start = startDate || new Date(end.getFullYear(), end.getMonth() - 5, 1)
-
-    const startMonth = new Date(start.getFullYear(), start.getMonth(), 1)
-    const endMonth = new Date(end.getFullYear(), end.getMonth(), 1)
-
-    // Inicializar meses no range
-    const current = new Date(startMonth)
-    while (current <= endMonth) {
-      const monthKey = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`
-      months[monthKey] = { receitas: 0, despesas: 0, investimentos: 0 }
-      current.setMonth(current.getMonth() + 1)
+    if (startDate && endDate) {
+      // Modo com range: inicializar todos os meses no intervalo
+      const current = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
+      const endMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1)
+      while (current <= endMonth) {
+        const monthKey = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`
+        months[monthKey] = { receitas: 0, despesas: 0, investimentos: 0 }
+        current.setMonth(current.getMonth() + 1)
+      }
     }
 
-    // Agregar transações por mês
+    // Agregar transações concluídas por mês
     transactions.forEach((transaction) => {
       if (transaction.status !== 'concluida') return
 
       const date = new Date(transaction.date)
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 
-      if (months[monthKey]) {
-        if (transaction.type === 'receita') {
-          months[monthKey].receitas += Number(transaction.amount)
-        } else if (transaction.type === 'despesa') {
-          months[monthKey].despesas += Number(transaction.amount)
-        } else if (transaction.type === 'investimento') {
-          months[monthKey].investimentos += Number(transaction.amount)
-        }
+      if (startDate && endDate) {
+        if (date < startDate || date > endDate) return
+      }
+
+      if (!months[monthKey]) {
+        months[monthKey] = { receitas: 0, despesas: 0, investimentos: 0 }
+      }
+
+      if (transaction.type === 'receita') {
+        months[monthKey].receitas += Number(transaction.amount)
+      } else if (transaction.type === 'despesa') {
+        months[monthKey].despesas += Number(transaction.amount)
+      } else if (transaction.type === 'investimento') {
+        months[monthKey].investimentos += Number(transaction.amount)
       }
     })
 
+    // Se sem range, pegar últimos 12 meses com transações
+    const sortedKeys = startDate && endDate
+      ? Object.keys(months).sort()
+      : Object.keys(months).sort().slice(-12)
+
     // Converter para array e calcular saldo acumulado
     let accumulatedBalance = 0
-    return Object.entries(months).map(([key, value]) => {
+    return sortedKeys.map((key) => {
+      const value = months[key]
       const [year, month] = key.split('-')
       const date = new Date(parseInt(year), parseInt(month) - 1, 1)
       const monthName = date.toLocaleDateString('pt-BR', { month: 'short' })
