@@ -118,26 +118,24 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
     setError(null)
 
     try {
+      // Step 1: Extrair texto via API server-side (pdf-parse)
       setStatusText('Extraindo texto do arquivo...')
-      let text: string
 
-      if (selectedFile.name.toLowerCase().endsWith('.pdf')) {
-        const { extractTextFromPDF } = await import('@/lib/parsers/pdf-parser')
-        text = await extractTextFromPDF(selectedFile)
-      } else {
-        const { extractTextFromCSV } = await import('@/lib/parsers/csv-parser')
-        text = await extractTextFromCSV(selectedFile)
-      }
+      const formData = new FormData()
+      formData.append('file', selectedFile)
 
-      if (!text || text.trim().length < 10) {
-        throw new Error(
-          selectedFile.name.toLowerCase().endsWith('.pdf')
-            ? 'Não foi possível extrair texto do PDF. O arquivo pode ser escaneado/imagem. Tente exportar o extrato como CSV.'
-            : 'O arquivo CSV está vazio ou não contém dados suficientes.'
-        )
-      }
+      const parseResponse = await fetch('/api/parse-file', {
+        method: 'POST',
+        body: formData,
+      })
 
+      const parseData = await parseResponse.json()
+      if (!parseResponse.ok) throw new Error(parseData.error || 'Erro ao extrair texto')
+
+      const text = parseData.text as string
       setExtractedText(text)
+
+      // Step 2: Analisar com IA
       setStatusText('Analisando transações com IA...')
 
       const validTransactions = await callAI(text)
