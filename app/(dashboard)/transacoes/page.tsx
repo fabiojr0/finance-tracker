@@ -15,6 +15,7 @@ import {
   ArrowLeftRight,
   LineChart,
   Receipt,
+  Upload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -27,6 +28,7 @@ import {
   TransactionFilters,
   FilterTag,
 } from '@/components/transactions/transaction-filter-modal'
+import { ImportStatementModal } from '@/components/transactions/import-statement-modal'
 import { PeriodSelector, getDateRange, PeriodKey } from '@/components/shared/period-selector'
 import { Input } from '@/components/ui/input'
 import {
@@ -55,6 +57,9 @@ export default function TransactionsPage() {
   } = useFinance()
 
   const { openModal, openEditModal } = useTransactionModal()
+
+  // Import modal
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
   // Filter modal
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
@@ -320,10 +325,16 @@ export default function TransactionsPage() {
             {hasActiveFilters && ` (filtrado de ${transactions.length})`}
           </p>
         </div>
-        <Button onClick={() => openModal()} size="sm" className="sm:h-10 gap-1.5">
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Nova Transação</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setIsImportModalOpen(true)} size="sm" className="sm:h-10 gap-1.5">
+            <Upload className="h-4 w-4" />
+            <span className="hidden sm:inline">Importar Extrato</span>
+          </Button>
+          <Button onClick={() => openModal()} size="sm" className="sm:h-10 gap-1.5">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Nova Transação</span>
+          </Button>
+        </div>
       </div>
 
       {/* Summary mini cards */}
@@ -423,6 +434,12 @@ export default function TransactionsPage() {
           </div>
         )}
       </div>
+
+      {/* Import Modal */}
+      <ImportStatementModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+      />
 
       {/* Filter Modal */}
       <TransactionFilterModal

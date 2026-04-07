@@ -14,6 +14,7 @@ interface FinanceContextType {
   transactionsLoading: boolean
   transactionsError: string | null
   createTransaction: (input: CreateTransactionInput) => Promise<{ data: TransactionWithCategory | null; error: string | null }>
+  bulkCreateTransactions: (inputs: CreateTransactionInput[]) => Promise<{ data: TransactionWithCategory[] | null; error: string | null }>
   updateTransaction: (id: string, input: Partial<CreateTransactionInput>) => Promise<{ data: TransactionWithCategory | null; error: string | null }>
   deleteTransaction: (id: string) => Promise<{ error: string | null }>
   refetchTransactions: () => Promise<void>
@@ -97,6 +98,38 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error('Error creating transaction:', err)
       return { data: null, error: 'Erro ao criar transação' }
+    }
+  }, [supabase])
+
+  const bulkCreateTransactions = useCallback(async (inputs: CreateTransactionInput[]) => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      const rows = inputs.map((input) => ({
+        ...input,
+        user_id: user.id,
+      }))
+
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert(rows)
+        .select(
+          `
+          *,
+          category:categories(id, name, type, icon, color)
+        `
+        )
+
+      if (error) throw error
+
+      setTransactions((prev) => [...(data as TransactionWithCategory[]), ...prev])
+      return { data: data as TransactionWithCategory[], error: null }
+    } catch (err) {
+      console.error('Error bulk creating transactions:', err)
+      return { data: null, error: 'Erro ao importar transações' }
     }
   }, [supabase])
 
@@ -243,6 +276,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         transactionsLoading,
         transactionsError,
         createTransaction,
+        bulkCreateTransactions,
         updateTransaction,
         deleteTransaction,
         refetchTransactions: fetchTransactions,

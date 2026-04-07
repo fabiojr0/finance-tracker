@@ -20,6 +20,14 @@ export const transactionSchema = z.object({
   tags: z.array(z.string()).optional(),
 })
 
+export const importedTransactionSchema = z.object({
+  type: z.enum(['receita', 'despesa', 'transferencia', 'investimento']),
+  amount: z.number().positive(),
+  description: z.string().min(1).max(255),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  category_id: z.string().nullable().optional(),
+})
+
 export const categorySchema = z.object({
   name: z
     .string()
