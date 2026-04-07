@@ -64,7 +64,7 @@ export function SignupForm() {
       setTimeout(() => {
         router.push('/login')
       }, 2000)
-    } catch (err) {
+    } catch {
       setError('Ocorreu um erro ao criar a conta. Tente novamente.')
     } finally {
       setIsLoading(false)

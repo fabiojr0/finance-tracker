@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Transaction,
   TransactionWithCategory,
   CreateTransactionInput,
 } from '@/types/transaction'
@@ -120,6 +119,7 @@ export function useTransactions() {
 
   useEffect(() => {
     fetchTransactions()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return {

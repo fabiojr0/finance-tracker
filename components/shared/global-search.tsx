@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, ArrowDownLeft, ArrowUpRight, LineChart, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -31,7 +31,7 @@ export function GlobalSearch({ isMobile, onClose }: GlobalSearchProps) {
   const router = useRouter()
   const { transactions, categories } = useFinance()
 
-  const results = query.length >= 2
+  const results = useMemo(() => query.length >= 2
     ? transactions
         .filter((t) => {
           const searchNormalized = normalizeText(query)
@@ -41,13 +41,13 @@ export function GlobalSearch({ isMobile, onClose }: GlobalSearchProps) {
           return matchDescription || matchCategory || matchAmount
         })
         .slice(0, 8)
-    : []
+    : [], [query, transactions])
 
-  const categoryResults = query.length >= 2
+  const categoryResults = useMemo(() => query.length >= 2
     ? categories
         .filter((c) => normalizeText(c.name).includes(normalizeText(query)))
         .slice(0, 3)
-    : []
+    : [], [query, categories])
 
   const hasResults = results.length > 0 || categoryResults.length > 0
 

@@ -50,7 +50,7 @@ export function LoginForm() {
 
       router.push('/dashboard')
       router.refresh()
-    } catch (err) {
+    } catch {
       setError('Ocorreu um erro ao fazer login. Tente novamente.')
     } finally {
       setIsLoading(false)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback } from 'react'
 import { useFinance } from '@/lib/contexts/finance-context'
 import { useTransactionModal } from '@/components/transactions/transaction-modal'
 import { CalendarHeader, CalendarViewMode } from '@/components/calendar/calendar-header'
@@ -46,7 +46,8 @@ export default function CalendarPage() {
   )
 
   const handleDrillDown = useCallback(
-    (date: Date, targetMode: CalendarViewMode) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (date: Date, _targetMode: CalendarViewMode) => {
       if (viewMode === 'year') {
         setViewMode('month')
         setCurrentDate(date)
