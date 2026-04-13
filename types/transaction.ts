@@ -28,6 +28,7 @@ export interface CreateTransactionInput {
   is_recurring?: boolean
   recurring_frequency?: string
   tags?: string[]
+  external_id?: string | null
 }
 
 export interface UpdateTransactionInput extends Partial<CreateTransactionInput> {

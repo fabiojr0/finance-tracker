@@ -49,6 +49,7 @@ Cada transação deve ter:
 - "description": descrição limpa e legível da transação, não coloque coisas como compra no debito ou transferencia enviada/recebida, caso seja uma transferencia para alguém ou de alguém coloque apenas pix recebido/enviado e o nome e o ultimo nome da pessoa (3-40 caracteres)
 - "date": data no formato YYYY-MM-DD
 - "category_id": o id da categoria mais adequada da lista abaixo (ou null se nenhuma se aplicar)
+- "external_id": o identificador único da transação no extrato (string exata como aparece no CSV, ou null se não houver)
 
 Categorias disponíveis do usuário:
 ${categoriesText}
@@ -61,7 +62,7 @@ IMPORTANTE:
 - Retorne APENAS JSON válido, sem texto adicional
 
 Retorne exatamente neste formato:
-{ "transactions": [ { "type": "...", "amount": 0.00, "description": "...", "date": "YYYY-MM-DD", "category_id": "..." }, ... ] }`
+{ "transactions": [ { "type": "...", "amount": 0.00, "description": "...", "date": "YYYY-MM-DD", "category_id": "...", "external_id": "..." }, ... ] }`
 
   // 5-minute timeout
   const controller = new AbortController()

@@ -26,6 +26,7 @@ export const importedTransactionSchema = z.object({
   description: z.string().min(1).max(255),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   category_id: z.string().nullable().optional(),
+  external_id: z.string().nullable().optional(),
 })
 
 export const categorySchema = z.object({

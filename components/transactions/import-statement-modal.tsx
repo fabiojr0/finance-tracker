@@ -21,6 +21,7 @@ import { formatCurrency } from '@/lib/utils/format-currency'
 import { importedTransactionSchema } from '@/lib/utils/validation'
 import { TransactionType } from '@/types/transaction'
 import { cn } from '@/lib/utils/cn'
+import { createClient } from '@/lib/supabase/client'
 
 type Step = 'upload' | 'processing' | 'review' | 'importing' | 'done' | 'error'
 
@@ -30,6 +31,7 @@ interface ImportedTransaction {
   description: string
   date: string
   category_id?: string | null
+  external_id?: string | null
 }
 
 interface ImportStatementModalProps {
@@ -107,6 +109,32 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
 
     if (validTransactions.length === 0) {
       throw new Error('Nenhuma transação válida encontrada no extrato.')
+    }
+
+    // Filter out transactions with external_id that already exist in the database
+    const externalIds = validTransactions
+      .map((t) => t.external_id)
+      .filter((id): id is string => !!id)
+
+    if (externalIds.length > 0) {
+      const supabase = createClient()
+      const { data: existing } = await supabase
+        .from('transactions')
+        .select('external_id')
+        .in('external_id', externalIds)
+
+      if (existing && existing.length > 0) {
+        const existingIds = new Set(existing.map((e) => e.external_id))
+        const filtered = validTransactions.filter(
+          (t) => !t.external_id || !existingIds.has(t.external_id)
+        )
+
+        if (filtered.length === 0) {
+          throw new Error('Todas as transações do extrato já foram importadas anteriormente.')
+        }
+
+        return filtered
+      }
     }
 
     return validTransactions
@@ -218,6 +246,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
       description: t.description,
       date: t.date,
       category_id: t.category_id || undefined,
+      external_id: t.external_id || undefined,
       status: 'concluida' as const,
     }))
 
@@ -273,7 +302,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.csv"
+                accept=".csv"
                 onChange={handleFileSelect}
                 className="hidden"
               />
@@ -293,10 +322,6 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                 ou clique para selecionar
               </p>
               <div className="flex items-center gap-3">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400">
-                  <FileText className="h-3 w-3" />
-                  PDF
-                </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400">
                   <FileText className="h-3 w-3" />
                   CSV
@@ -580,15 +605,12 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
 }
 
 function isValidFile(file: File): boolean {
-  const validExtensions = ['.pdf', '.csv']
   const maxSize = 10 * 1024 * 1024
 
-  const hasValidExtension = validExtensions.some((ext) =>
-    file.name.toLowerCase().endsWith(ext)
-  )
+  const hasValidExtension = file.name.toLowerCase().endsWith('.csv')
 
   if (!hasValidExtension) {
-    alert('Formato inválido. Use PDF ou CSV.')
+    alert('Formato inválido. Use CSV.')
     return false
   }
 
