@@ -6,9 +6,26 @@ interface CategoryInfo {
   type: string
 }
 
+type NameStyle = 'padrao' | 'curto' | 'extenso' | 'completo'
+
+interface ExampleTransaction {
+  description: string
+  type: string
+  category_id: string | null
+  category_name?: string | null
+}
+
+interface ImportOptions {
+  customPrompt?: string
+  ignoreWords?: string[]
+  nameStyle?: NameStyle
+  examples?: ExampleTransaction[]
+}
+
 interface RequestBody {
   text: string
   categories: CategoryInfo[]
+  options?: ImportOptions
 }
 
 export async function POST(request: NextRequest) {
@@ -27,7 +44,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   }
 
-  const { text, categories } = body
+  const { text, categories, options } = body
 
   if (!text || text.trim().length < 10) {
     return NextResponse.json(
@@ -40,13 +57,49 @@ export async function POST(request: NextRequest) {
     ? categories.map((c) => `- id: "${c.id}", nome: "${c.name}", tipo: "${c.type}"`).join('\n')
     : 'Nenhuma categoria disponível'
 
+  const nameStyle = options?.nameStyle ?? 'padrao'
+  const nameStyleInstruction = (() => {
+    switch (nameStyle) {
+      case 'curto':
+        return 'Para transferências entre pessoas, use APENAS o primeiro nome da pessoa (ex: "Pix recebido - João", "Pix enviado - Maria"). Mantenha curto, máximo 25 caracteres.'
+      case 'extenso':
+        return 'Para transferências entre pessoas, use o nome completo da pessoa quando disponível (ex: "Pix recebido - João da Silva Santos", "Pix enviado - Maria Oliveira Costa"). Mantenha até 60 caracteres.'
+      case 'completo':
+        return 'Para transferências entre pessoas, escreva o nome completo da pessoa exatamente como aparece no extrato, sem abreviações. Pode usar até 80 caracteres.'
+      case 'padrao':
+      default:
+        return 'Para transferências entre pessoas, use o primeiro nome e o último nome da pessoa (ex: "Pix recebido - João Silva", "Pix enviado - Maria Costa"). Entre 3 e 40 caracteres.'
+    }
+  })()
+
+  const ignoreWords = (options?.ignoreWords ?? [])
+    .map((w) => w.trim())
+    .filter((w) => w.length > 0)
+
+  const ignoreWordsInstruction = ignoreWords.length > 0
+    ? `\n- IGNORE COMPLETAMENTE qualquer transação cuja descrição contenha (sem diferenciar maiúsculas/minúsculas) alguma destas palavras/expressões: ${ignoreWords.map((w) => `"${w}"`).join(', ')}. Não as inclua no JSON de saída.`
+    : ''
+
+  const customPromptInstruction = options?.customPrompt && options.customPrompt.trim().length > 0
+    ? `\n\nINSTRUÇÕES ADICIONAIS DO USUÁRIO (siga rigorosamente):\n${options.customPrompt.trim()}`
+    : ''
+
+  const examples = (options?.examples ?? [])
+    .filter((e) => e && e.description && e.description.trim().length > 0)
+    .slice(0, 80)
+
+  const examplesSection = examples.length > 0
+    ? `\n\nEXEMPLOS DE CLASSIFICAÇÕES ANTERIORES DO USUÁRIO (use como referência para escolher categorias e padronizar descrições; NÃO inclua nenhum desses exemplos no JSON de saída — eles são apenas referência):
+${examples.map((e) => `- "${e.description}" → tipo: "${e.type}"${e.category_id ? `, category_id: "${e.category_id}"${e.category_name ? ` (${e.category_name})` : ''}` : ', sem categoria'}`).join('\n')}`
+    : ''
+
   const systemPrompt = `Você é um assistente que extrai transações financeiras de extratos bancários brasileiros.
 Dado o texto de um extrato bancário, extraia TODAS as transações e retorne um JSON.
 
 Cada transação deve ter:
 - "type": "receita" para créditos/depósitos/salários, "despesa" para débitos/pagamentos/compras e transferencias para outras pessoas, "transferencia" para transferências entre contas do mesmo usuario, "investimento" para aplicações/investimentos
 - "amount": número positivo (sem sinal negativo, ex: 150.50)
-- "description": descrição limpa e legível da transação, não coloque coisas como compra no debito ou transferencia enviada/recebida, caso seja uma transferencia para alguém ou de alguém coloque apenas pix recebido/enviado e o nome e o ultimo nome da pessoa (3-40 caracteres)
+- "description": descrição limpa e legível da transação, não coloque coisas como "compra no debito" ou "transferencia enviada/recebida". ${nameStyleInstruction}
 - "date": data no formato YYYY-MM-DD
 - "category_id": o id da categoria mais adequada da lista abaixo (ou null se nenhuma se aplicar)
 
@@ -54,14 +107,14 @@ Categorias disponíveis do usuário:
 ${categoriesText}
 
 IMPORTANTE:
-- Extraia TODAS as transações do extrato, não pule nenhuma
+- Extraia TODAS as transações do extrato, não pule nenhuma${ignoreWordsInstruction}
 - O campo amount deve ser SEMPRE positivo
 - Datas devem estar no formato YYYY-MM-DD
 - Escolha a categoria mais adequada para cada transação baseado na descrição
 - Retorne APENAS JSON válido, sem texto adicional
 
 Retorne exatamente neste formato:
-{ "transactions": [ { "type": "...", "amount": 0.00, "description": "...", "date": "YYYY-MM-DD", "category_id": "..." }, ... ] }`
+{ "transactions": [ { "type": "...", "amount": 0.00, "description": "...", "date": "YYYY-MM-DD", "category_id": "..." }, ... ] }${examplesSection}${customPromptInstruction}`
 
   // 5-minute timeout
   const controller = new AbortController()

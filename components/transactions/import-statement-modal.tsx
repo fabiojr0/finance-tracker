@@ -1,19 +1,22 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Upload,
   FileText,
   Loader2,
   Trash2,
-  CheckCircle2,
   AlertCircle,
   FileUp,
   ArrowDownLeft,
   ArrowUpRight,
   ArrowLeftRight,
   LineChart,
+  Settings2,
+  ChevronDown,
+  X,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Modal, ModalHeader, ModalContent } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { useFinance } from '@/lib/contexts/finance-context'
@@ -22,7 +25,7 @@ import { importedTransactionSchema } from '@/lib/utils/validation'
 import { TransactionType } from '@/types/transaction'
 import { cn } from '@/lib/utils/cn'
 
-type Step = 'upload' | 'processing' | 'review' | 'importing' | 'done' | 'error'
+type Step = 'upload' | 'processing' | 'review' | 'importing' | 'error'
 
 interface ImportedTransaction {
   type: TransactionType
@@ -30,6 +33,15 @@ interface ImportedTransaction {
   description: string
   date: string
   category_id?: string | null
+}
+
+type NameStyle = 'padrao' | 'curto' | 'extenso' | 'completo'
+
+interface ImportSettings {
+  customPrompt: string
+  ignoreWords: string
+  nameStyle: NameStyle
+  usePreviousMonthExamples: boolean
 }
 
 interface ImportStatementModalProps {
@@ -44,8 +56,46 @@ const TYPE_OPTIONS = [
   { value: 'transferencia', label: 'Transferência', icon: ArrowLeftRight, color: 'text-amber-400' },
 ] as const
 
+const NAME_STYLE_OPTIONS: { value: NameStyle; label: string; hint: string }[] = [
+  { value: 'padrao', label: 'Padrão', hint: 'Primeiro + último nome (ex: João Silva)' },
+  { value: 'curto', label: 'Curto', hint: 'Apenas primeiro nome (ex: João)' },
+  { value: 'extenso', label: 'Extenso', hint: 'Nome completo abreviado quando longo' },
+  { value: 'completo', label: 'Completo', hint: 'Nome completo como no extrato' },
+]
+
+const SETTINGS_STORAGE_KEY = 'finance-tracker:import-statement-settings'
+
+const DEFAULT_SETTINGS: ImportSettings = {
+  customPrompt: '',
+  ignoreWords: '',
+  nameStyle: 'padrao',
+  usePreviousMonthExamples: true,
+}
+
+function loadSettings(): ImportSettings {
+  if (typeof window === 'undefined') return DEFAULT_SETTINGS
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY)
+    if (!raw) return DEFAULT_SETTINGS
+    const parsed = JSON.parse(raw) as Partial<ImportSettings>
+    return {
+      customPrompt: typeof parsed.customPrompt === 'string' ? parsed.customPrompt : '',
+      ignoreWords: typeof parsed.ignoreWords === 'string' ? parsed.ignoreWords : '',
+      nameStyle: NAME_STYLE_OPTIONS.some((o) => o.value === parsed.nameStyle)
+        ? (parsed.nameStyle as NameStyle)
+        : 'padrao',
+      usePreviousMonthExamples:
+        typeof parsed.usePreviousMonthExamples === 'boolean'
+          ? parsed.usePreviousMonthExamples
+          : true,
+    }
+  } catch {
+    return DEFAULT_SETTINGS
+  }
+}
+
 export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalProps) {
-  const { categories, bulkCreateTransactions, refetchTransactions } = useFinance()
+  const { categories, transactions: pastTransactions, bulkCreateTransactions, refetchTransactions } = useFinance()
 
   const [step, setStep] = useState<Step>('upload')
   const [file, setFile] = useState<File | null>(null)
@@ -54,9 +104,45 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
   const [statusText, setStatusText] = useState('')
   const [extractedText, setExtractedText] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [settings, setSettings] = useState<ImportSettings>(DEFAULT_SETTINGS)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setSettings(loadSettings())
+  }, [])
+
+  const updateSettings = useCallback((patch: Partial<ImportSettings>) => {
+    setSettings((prev) => {
+      const next = { ...prev, ...patch }
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(next))
+        } catch {
+          // ignore quota / privacy mode errors
+        }
+      }
+      return next
+    })
+  }, [])
+
+  const resetSettings = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem(SETTINGS_STORAGE_KEY)
+      } catch {
+        // ignore
+      }
+    }
+    setSettings(DEFAULT_SETTINGS)
+  }, [])
+
+  const previousMonthExamplesCount = useMemo(
+    () => buildPreviousMonthExamples(pastTransactions).length,
+    [pastTransactions]
+  )
 
   const reset = useCallback(() => {
     setStep('upload')
@@ -81,12 +167,27 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
     const controller = new AbortController()
     abortControllerRef.current = controller
 
+    const ignoreWords = settings.ignoreWords
+      .split(/[\n,]/)
+      .map((w) => w.trim())
+      .filter((w) => w.length > 0)
+
+    const examples = settings.usePreviousMonthExamples
+      ? buildPreviousMonthExamples(pastTransactions)
+      : []
+
     const response = await fetch('/api/import-statement', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         text,
         categories: categories.map((c) => ({ id: c.id, name: c.name, type: c.type })),
+        options: {
+          customPrompt: settings.customPrompt.trim() || undefined,
+          ignoreWords: ignoreWords.length > 0 ? ignoreWords : undefined,
+          nameStyle: settings.nameStyle,
+          examples: examples.length > 0 ? examples : undefined,
+        },
       }),
       signal: controller.signal,
     })
@@ -110,7 +211,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
     }
 
     return validTransactions
-  }, [categories])
+  }, [categories, pastTransactions, settings])
 
   const processFile = useCallback(async (selectedFile: File) => {
     setFile(selectedFile)
@@ -181,21 +282,38 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
       setIsDragging(false)
       const droppedFile = e.dataTransfer.files[0]
       if (droppedFile && isValidFile(droppedFile)) {
-        processFile(droppedFile)
+        setFile(droppedFile)
+        setError(null)
       }
     },
-    [processFile]
+    []
   )
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const selectedFile = e.target.files?.[0]
       if (selectedFile && isValidFile(selectedFile)) {
-        processFile(selectedFile)
+        setFile(selectedFile)
+        setError(null)
       }
+      // Allow re-selecting the same file later
+      e.target.value = ''
     },
-    [processFile]
+    []
   )
+
+  const handleContinue = useCallback(() => {
+    if (!file) return
+    processFile(file)
+  }, [file, processFile])
+
+  const handleClearFile = useCallback(() => {
+    setFile(null)
+    setError(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }, [])
 
   const updateTransaction = useCallback((index: number, field: keyof ImportedTransaction, value: string | number) => {
     setTransactions((prev) =>
@@ -211,6 +329,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
     if (transactions.length === 0) return
 
     setStep('importing')
+    const count = transactions.length
 
     const inputs = transactions.map((t) => ({
       type: t.type,
@@ -224,14 +343,24 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
     const { error } = await bulkCreateTransactions(inputs)
 
     if (error) {
+      toast.error('Erro ao importar transações', {
+        description: error,
+      })
       setError(error)
       setStep('error')
       return
     }
 
     await refetchTransactions()
-    setStep('done')
-  }, [transactions, bulkCreateTransactions, refetchTransactions])
+    toast.success(
+      count === 1
+        ? '1 transação importada'
+        : `${count} transações importadas`,
+      { description: 'O extrato foi processado com sucesso.' }
+    )
+    reset()
+    onClose()
+  }, [transactions, bulkCreateTransactions, refetchTransactions, reset, onClose])
 
   const handleCancel = useCallback(() => {
     if (abortControllerRef.current) {
@@ -258,51 +387,254 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
         {/* ── UPLOAD ── */}
         {step === 'upload' && (
           <div className="space-y-4">
-            <div
-              className={cn(
-                'flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-10 sm:p-14 text-center transition-colors cursor-pointer',
-                isDragging
-                  ? 'border-primary bg-primary/5'
-                  : 'border-neutral-700 bg-neutral-900/50 hover:border-neutral-500 hover:bg-neutral-800/40'
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.csv"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
+            {!file ? (
+              <div
+                className={cn(
+                  'flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-10 sm:p-14 text-center transition-colors cursor-pointer',
+                  isDragging
+                    ? 'border-primary bg-primary/5'
+                    : 'border-neutral-700 bg-neutral-900/50 hover:border-neutral-500 hover:bg-neutral-800/40'
+                )}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleFileDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className={cn(
+                  'flex items-center justify-center h-14 w-14 rounded-2xl mb-5 transition-colors',
+                  isDragging ? 'bg-primary/15' : 'bg-neutral-800'
+                )}>
+                  <FileUp className={cn(
+                    'h-7 w-7 transition-colors',
+                    isDragging ? 'text-primary' : 'text-neutral-400'
+                  )} />
+                </div>
+                <p className="text-base font-medium text-neutral-200 mb-1.5">
+                  {isDragging ? 'Solte o arquivo aqui' : 'Arraste seu extrato aqui'}
+                </p>
+                <p className="text-sm text-neutral-500 mb-4">
+                  ou clique para selecionar
+                </p>
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400">
+                    <FileText className="h-3 w-3" />
+                    PDF
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400">
+                    <FileText className="h-3 w-3" />
+                    CSV
+                  </span>
+                  <span className="text-xs text-neutral-600">máx. 10MB</span>
+                </div>
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  'flex items-center gap-3 rounded-lg border p-4 transition-colors',
+                  isDragging
+                    ? 'border-primary bg-primary/5'
+                    : 'border-neutral-800 bg-neutral-900/50'
+                )}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleFileDrop}
+              >
+                <div className="flex items-center justify-center h-11 w-11 rounded-xl bg-primary/15 flex-shrink-0">
+                  <FileText className="h-5 w-5 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-neutral-200 truncate">
+                    {file.name}
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-0.5">
+                    {formatFileSize(file.size)} · pronto para importar
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs text-neutral-400 hover:text-neutral-200 px-2 py-1 rounded-md hover:bg-neutral-800 transition-colors"
+                >
+                  Trocar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearFile}
+                  className="p-1.5 rounded-md text-neutral-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  aria-label="Remover arquivo"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Settings panel */}
+            <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-neutral-800/40 transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-neutral-800">
+                    <Settings2 className="h-4 w-4 text-neutral-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-neutral-200">
+                      Configurações de importação
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      Personalize como a IA processa o extrato
+                    </p>
+                  </div>
+                </div>
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 text-neutral-500 transition-transform',
+                    settingsOpen && 'rotate-180'
+                  )}
+                />
+              </button>
+
+              {settingsOpen && (
+                <div className="px-4 pb-4 pt-1 space-y-4 border-t border-neutral-800">
+                  {/* Previous month examples */}
+                  <label
+                    htmlFor="import-examples-checkbox"
+                    className="flex items-start gap-3 cursor-pointer select-none rounded-lg border border-neutral-800 bg-neutral-900/50 p-3 hover:border-neutral-700 transition-colors"
+                  >
+                    <input
+                      id="import-examples-checkbox"
+                      type="checkbox"
+                      checked={settings.usePreviousMonthExamples}
+                      onChange={(e) =>
+                        updateSettings({ usePreviousMonthExamples: e.target.checked })
+                      }
+                      className="mt-0.5 h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-primary focus:ring-1 focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-neutral-200">
+                        Usar transações do mês anterior como exemplos
+                      </p>
+                      <p className="text-[11px] text-neutral-500 mt-0.5 leading-tight">
+                        {previousMonthExamplesCount > 0
+                          ? `${previousMonthExamplesCount} ${previousMonthExamplesCount === 1 ? 'transação encontrada' : 'transações encontradas'} para guiar a IA na escolha de categorias e nomes.`
+                          : 'Nenhuma transação do mês anterior disponível.'}
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Name style */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-neutral-300">
+                      Estilo do nome em transferências
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {NAME_STYLE_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => updateSettings({ nameStyle: opt.value })}
+                          className={cn(
+                            'text-left rounded-lg border px-3 py-2 transition-colors',
+                            settings.nameStyle === opt.value
+                              ? 'border-primary bg-primary/10'
+                              : 'border-neutral-800 bg-neutral-900/50 hover:border-neutral-700'
+                          )}
+                        >
+                          <p className={cn(
+                            'text-sm font-medium',
+                            settings.nameStyle === opt.value ? 'text-primary' : 'text-neutral-200'
+                          )}>
+                            {opt.label}
+                          </p>
+                          <p className="text-[11px] text-neutral-500 mt-0.5 leading-tight">
+                            {opt.hint}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ignore words */}
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="import-ignore-words"
+                      className="text-xs font-medium text-neutral-300"
+                    >
+                      Palavras a ignorar
+                    </label>
+                    <input
+                      id="import-ignore-words"
+                      type="text"
+                      value={settings.ignoreWords}
+                      onChange={(e) => updateSettings({ ignoreWords: e.target.value })}
+                      placeholder="ex: saldo anterior, rendimento, IOF"
+                      className="w-full h-10 rounded-md border border-neutral-800 bg-neutral-900 px-3 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                    />
+                    <p className="text-[11px] text-neutral-500">
+                      Separe por vírgula. Transações que contenham essas palavras serão descartadas.
+                    </p>
+                  </div>
+
+                  {/* Custom prompt */}
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="import-custom-prompt"
+                      className="text-xs font-medium text-neutral-300"
+                    >
+                      Instruções adicionais para a IA
+                    </label>
+                    <textarea
+                      id="import-custom-prompt"
+                      value={settings.customPrompt}
+                      onChange={(e) => updateSettings({ customPrompt: e.target.value })}
+                      rows={3}
+                      placeholder='ex: "Toda transação contendo Uber deve virar despesa de transporte", "Aplicações em CDB são investimentos"'
+                      className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-y"
+                    />
+                    <p className="text-[11px] text-neutral-500">
+                      Essas instruções são adicionadas ao prompt enviado à IA.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-[11px] text-neutral-600">
+                      As preferências ficam salvas neste navegador.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={resetSettings}
+                      className="text-[11px] text-neutral-400 hover:text-neutral-200 underline-offset-2 hover:underline"
+                    >
+                      Restaurar padrões
+                    </button>
+                  </div>
+                </div>
               )}
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleFileDrop}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.csv"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              <div className={cn(
-                'flex items-center justify-center h-14 w-14 rounded-2xl mb-5 transition-colors',
-                isDragging ? 'bg-primary/15' : 'bg-neutral-800'
-              )}>
-                <FileUp className={cn(
-                  'h-7 w-7 transition-colors',
-                  isDragging ? 'text-primary' : 'text-neutral-400'
-                )} />
-              </div>
-              <p className="text-base font-medium text-neutral-200 mb-1.5">
-                {isDragging ? 'Solte o arquivo aqui' : 'Arraste seu extrato aqui'}
-              </p>
-              <p className="text-sm text-neutral-500 mb-4">
-                ou clique para selecionar
-              </p>
-              <div className="flex items-center gap-3">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400">
-                  <FileText className="h-3 w-3" />
-                  PDF
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400">
-                  <FileText className="h-3 w-3" />
-                  CSV
-                </span>
-                <span className="text-xs text-neutral-600">máx. 10MB</span>
-              </div>
+            </div>
+
+            {/* Footer actions */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-neutral-800">
+              <Button variant="ghost" size="sm" onClick={handleClose} className="px-4">
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleContinue}
+                disabled={!file}
+                className="px-6 gap-1.5"
+              >
+                Continuar
+              </Button>
             </div>
           </div>
         )}
@@ -557,26 +889,59 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
           </div>
         )}
 
-        {/* ── DONE ── */}
-        {step === 'done' && (
-          <div className="flex flex-col items-center py-14 gap-5">
-            <div className="h-16 w-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-              <CheckCircle2 className="h-8 w-8 text-emerald-400" />
-            </div>
-            <div className="text-center space-y-1.5">
-              <p className="text-base font-medium text-neutral-200">Importação concluída!</p>
-              <p className="text-sm text-neutral-400">
-                {transactions.length} transações foram adicionadas com sucesso.
-              </p>
-            </div>
-            <Button size="sm" onClick={handleClose} className="mt-1 px-6">
-              Fechar
-            </Button>
-          </div>
-        )}
       </ModalContent>
     </Modal>
   )
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+}
+
+function getPreviousMonthRange(now: Date = new Date()): { start: string; end: string } {
+  const year = now.getFullYear()
+  const month = now.getMonth() // 0-11, current
+  const start = new Date(year, month - 1, 1)
+  const end = new Date(year, month, 0) // last day of previous month
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return { start: fmt(start), end: fmt(end) }
+}
+
+interface PastTransactionLike {
+  date: string
+  description: string
+  type: string
+  category_id: string | null
+  category?: { id: string; name: string } | null
+}
+
+function buildPreviousMonthExamples(transactions: PastTransactionLike[]) {
+  const { start, end } = getPreviousMonthRange()
+  const seen = new Set<string>()
+  const examples: {
+    description: string
+    type: string
+    category_id: string | null
+    category_name: string | null
+  }[] = []
+  for (const t of transactions) {
+    if (!t.date || t.date < start || t.date > end) continue
+    if (!t.description || t.description.trim().length === 0) continue
+    const key = `${t.description.toLowerCase()}|${t.category_id ?? ''}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    examples.push({
+      description: t.description,
+      type: t.type,
+      category_id: t.category_id ?? null,
+      category_name: t.category?.name ?? null,
+    })
+    if (examples.length >= 80) break
+  }
+  return examples
 }
 
 function isValidFile(file: File): boolean {

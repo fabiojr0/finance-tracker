@@ -1,6 +1,7 @@
 'use client'
 
 import { ReactNode, useState } from 'react'
+import { Toaster } from 'sonner'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { FinanceProvider } from '@/lib/contexts/finance-context'
@@ -25,6 +26,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </main>
             </div>
           </div>
+          <Toaster
+            theme="dark"
+            position="bottom-right"
+            richColors
+            closeButton
+          />
         </TransactionModalProvider>
       </CategoryModalProvider>
     </FinanceProvider>
