@@ -24,6 +24,7 @@ import { formatCurrency } from '@/lib/utils/format-currency'
 import { importedTransactionSchema } from '@/lib/utils/validation'
 import { TransactionType } from '@/types/transaction'
 import { cn } from '@/lib/utils/cn'
+import { createClient } from '@/lib/supabase/client'
 
 type Step = 'upload' | 'processing' | 'review' | 'importing' | 'error'
 
@@ -33,6 +34,7 @@ interface ImportedTransaction {
   description: string
   date: string
   category_id?: string | null
+  external_id?: string | null
 }
 
 type NameStyle = 'padrao' | 'curto' | 'extenso' | 'completo'
@@ -210,6 +212,32 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
       throw new Error('Nenhuma transação válida encontrada no extrato.')
     }
 
+    // Filter out transactions with external_id that already exist in the database
+    const externalIds = validTransactions
+      .map((t) => t.external_id)
+      .filter((id): id is string => !!id)
+
+    if (externalIds.length > 0) {
+      const supabase = createClient()
+      const { data: existing } = await supabase
+        .from('transactions')
+        .select('external_id')
+        .in('external_id', externalIds)
+
+      if (existing && existing.length > 0) {
+        const existingIds = new Set(existing.map((e) => e.external_id))
+        const filtered = validTransactions.filter(
+          (t) => !t.external_id || !existingIds.has(t.external_id)
+        )
+
+        if (filtered.length === 0) {
+          throw new Error('Todas as transações do extrato já foram importadas anteriormente.')
+        }
+
+        return filtered
+      }
+    }
+
     return validTransactions
   }, [categories, pastTransactions, settings])
 
@@ -337,6 +365,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
       description: t.description,
       date: t.date,
       category_id: t.category_id || undefined,
+      external_id: t.external_id || undefined,
       status: 'concluida' as const,
     }))
 
@@ -390,7 +419,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.csv"
+              accept=".csv"
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -424,10 +453,6 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                   ou clique para selecionar
                 </p>
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400">
-                    <FileText className="h-3 w-3" />
-                    PDF
-                  </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400">
                     <FileText className="h-3 w-3" />
                     CSV
@@ -509,16 +534,22 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                   {/* Previous month examples */}
                   <label
                     htmlFor="import-examples-checkbox"
-                    className="flex items-start gap-3 cursor-pointer select-none rounded-lg border border-neutral-800 bg-neutral-900/50 p-3 hover:border-neutral-700 transition-colors"
+                    className={cn(
+                      'flex items-start gap-3 select-none rounded-lg border border-neutral-800 bg-neutral-900/50 p-3 transition-colors',
+                      previousMonthExamplesCount > 0
+                        ? 'cursor-pointer hover:border-neutral-700'
+                        : 'cursor-not-allowed opacity-60'
+                    )}
                   >
                     <input
                       id="import-examples-checkbox"
                       type="checkbox"
-                      checked={settings.usePreviousMonthExamples}
+                      checked={settings.usePreviousMonthExamples && previousMonthExamplesCount > 0}
+                      disabled={previousMonthExamplesCount === 0}
                       onChange={(e) =>
                         updateSettings({ usePreviousMonthExamples: e.target.checked })
                       }
-                      className="mt-0.5 h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-primary focus:ring-1 focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                      className="mt-0.5 h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-primary focus:ring-1 focus:ring-primary focus:ring-offset-0 cursor-pointer disabled:cursor-not-allowed"
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-neutral-200">
@@ -945,15 +976,12 @@ function buildPreviousMonthExamples(transactions: PastTransactionLike[]) {
 }
 
 function isValidFile(file: File): boolean {
-  const validExtensions = ['.pdf', '.csv']
   const maxSize = 10 * 1024 * 1024
 
-  const hasValidExtension = validExtensions.some((ext) =>
-    file.name.toLowerCase().endsWith(ext)
-  )
+  const hasValidExtension = file.name.toLowerCase().endsWith('.csv')
 
   if (!hasValidExtension) {
-    alert('Formato inválido. Use PDF ou CSV.')
+    alert('Formato inválido. Use CSV.')
     return false
   }
 
