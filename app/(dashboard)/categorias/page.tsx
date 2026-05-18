@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton, SkeletonCategoryCard } from '@/components/shared/skeleton'
 import { CategoryIcon } from '@/components/shared/category-icon'
 import { useCategoryModal } from '@/components/categories/category-modal'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import { useFinance } from '@/lib/contexts/finance-context'
 import { Category } from '@/types/category'
 
@@ -108,9 +109,19 @@ function CategorySection({
 export default function CategoriesPage() {
   const { categories, categoriesLoading: loading, deleteCategory } = useFinance()
   const { openModal, openEditModal } = useCategoryModal()
+  const confirm = useConfirm()
 
   const handleDelete = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir esta categoria?')) {
+    const category = categories.find((c) => c.id === id)
+    const ok = await confirm({
+      title: 'Excluir categoria?',
+      description: category
+        ? `A categoria "${category.name}" será removida. Esta ação não pode ser desfeita.`
+        : 'Esta ação não pode ser desfeita.',
+      confirmLabel: 'Excluir',
+      variant: 'destructive',
+    })
+    if (ok) {
       await deleteCategory(id)
     }
   }

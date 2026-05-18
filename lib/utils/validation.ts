@@ -53,7 +53,21 @@ export const loginSchema = z.object({
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
 })
 
+export const fullNameSchema = z
+  .string()
+  .trim()
+  .min(2, 'Nome deve ter no mínimo 2 caracteres')
+  .max(100, 'Nome deve ter no máximo 100 caracteres')
+  .regex(
+    /^[A-Za-zÀ-ÖØ-öø-ÿ'’\-\s]+$/,
+    'Nome deve conter apenas letras e espaços'
+  )
+  .refine((value) => value.trim().includes(' '), {
+    message: 'Informe nome e sobrenome',
+  })
+
 export const signupSchema = z.object({
+  full_name: fullNameSchema,
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
   confirmPassword: z.string(),

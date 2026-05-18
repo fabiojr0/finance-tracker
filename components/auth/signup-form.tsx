@@ -10,18 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { UI_TEXT } from '@/lib/constants/ui-text'
+import { signupSchema } from '@/lib/utils/validation'
 import Link from 'next/link'
-
-const signupSchema = z
-  .object({
-    email: z.string().email('Email inválido'),
-    password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'As senhas não coincidem',
-    path: ['confirmPassword'],
-  })
 
 type SignupFormData = z.infer<typeof signupSchema>
 
@@ -46,11 +36,15 @@ export function SignupForm() {
 
     try {
       const supabase = createClient()
+      const fullName = data.full_name.trim().replace(/\s+/g, ' ')
       const { error: signUpError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
           emailRedirectTo: `${window.location.origin}/api/auth/callback`,
+          data: {
+            full_name: fullName,
+          },
         },
       })
 
@@ -123,6 +117,23 @@ export function SignupForm() {
         }}
         className="space-y-4"
       >
+        <div>
+          <Label htmlFor="full_name">{UI_TEXT.settings.fullName}</Label>
+          <Input
+            id="full_name"
+            type="text"
+            autoComplete="name"
+            placeholder="Seu nome completo"
+            {...register('full_name')}
+            disabled={isLoading || success}
+          />
+          {errors.full_name && (
+            <p className="text-sm text-red-500 mt-1">
+              {errors.full_name.message}
+            </p>
+          )}
+        </div>
+
         <div>
           <Label htmlFor="email">{UI_TEXT.auth.email}</Label>
           <Input

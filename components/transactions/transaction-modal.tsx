@@ -2,6 +2,7 @@
 
 import { useState, createContext, useContext, useCallback, ReactNode } from 'react'
 import { Modal, ModalHeader, ModalContent } from '@/components/ui/modal'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import { TransactionForm } from './transaction-form'
 import { useFinance } from '@/lib/contexts/finance-context'
 import { CreateTransactionInput, TransactionWithCategory } from '@/types/transaction'
@@ -66,6 +67,7 @@ interface TransactionModalProps {
 
 function TransactionModal({ isOpen, onClose, editingTransaction, defaultDate }: TransactionModalProps) {
   const { createTransaction, updateTransaction, deleteTransaction } = useFinance()
+  const confirm = useConfirm()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (data: CreateTransactionInput) => {
@@ -84,12 +86,17 @@ function TransactionModal({ isOpen, onClose, editingTransaction, defaultDate }: 
 
   const handleDelete = async () => {
     if (!editingTransaction) return
-    if (confirm('Tem certeza que deseja excluir esta transação?')) {
-      setIsSubmitting(true)
-      const { error } = await deleteTransaction(editingTransaction.id)
-      setIsSubmitting(false)
-      if (!error) onClose()
-    }
+    const ok = await confirm({
+      title: 'Excluir transação?',
+      description: `"${editingTransaction.description}" será removida. Esta ação não pode ser desfeita.`,
+      confirmLabel: 'Excluir',
+      variant: 'destructive',
+    })
+    if (!ok) return
+    setIsSubmitting(true)
+    const { error } = await deleteTransaction(editingTransaction.id)
+    setIsSubmitting(false)
+    if (!error) onClose()
   }
 
   const defaultValues = editingTransaction

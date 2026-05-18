@@ -1,12 +1,24 @@
 'use client'
 
+import { useCallback, useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useUser } from '@/lib/hooks/use-user'
 import { Skeleton } from '@/components/shared/skeleton'
+import { createClient } from '@/lib/supabase/client'
+import { fullNameSchema } from '@/lib/utils/validation'
 import { User, AlertTriangle, Coins } from 'lucide-react'
+
+const profileFormSchema = z.object({
+  full_name: fullNameSchema,
+})
+
+type ProfileFormData = z.infer<typeof profileFormSchema>
 
 function SkeletonSettingsCard() {
   return (
@@ -33,8 +45,68 @@ function SkeletonSettingsCard() {
 
 export default function SettingsPage() {
   const { user, loading } = useUser()
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [feedback, setFeedback] = useState<
+    { type: 'success' | 'error'; message: string } | null
+  >(null)
 
-  if (loading) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isDirty },
+  } = useForm<ProfileFormData>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: { full_name: '' },
+  })
+
+  const loadProfile = useCallback(async (userId: string) => {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', userId)
+      .single()
+
+    if (!error && data) {
+      reset({ full_name: data.full_name ?? '' })
+    }
+    setProfileLoading(false)
+  }, [reset])
+
+  useEffect(() => {
+    if (!user) return
+    void loadProfile(user.id)
+  }, [user, loadProfile])
+
+  const onSubmit = async (data: ProfileFormData) => {
+    if (!user) return
+    setSaving(true)
+    setFeedback(null)
+
+    const fullName = data.full_name.trim().replace(/\s+/g, ' ')
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('profiles')
+      .update({ full_name: fullName })
+      .eq('id', user.id)
+
+    setSaving(false)
+
+    if (error) {
+      setFeedback({
+        type: 'error',
+        message: 'Não foi possível salvar. Tente novamente.',
+      })
+      return
+    }
+
+    reset({ full_name: fullName })
+    setFeedback({ type: 'success', message: 'Perfil atualizado com sucesso.' })
+  }
+
+  if (loading || (user && profileLoading)) {
     return (
       <div className="space-y-6">
         <div className="space-y-2">
@@ -74,38 +146,70 @@ export default function SettingsPage() {
             <CardTitle className="text-base sm:text-lg">Perfil</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 px-4 sm:px-6">
-          <div>
-            <Label htmlFor="email" className="text-neutral-300">E-mail</Label>
-            <Input
-              id="email"
-              type="email"
-              value={user?.email || ''}
-              disabled
-              className="bg-neutral-800/50 mt-1.5"
-            />
-            <p className="text-xs text-neutral-500 mt-1.5">
-              O e-mail não pode ser alterado
-            </p>
-          </div>
+        <CardContent className="px-4 sm:px-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSubmit(onSubmit)(e)
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <Label htmlFor="email" className="text-neutral-300">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                value={user?.email || ''}
+                disabled
+                className="bg-neutral-800/50 mt-1.5"
+              />
+              <p className="text-xs text-neutral-500 mt-1.5">
+                O e-mail não pode ser alterado
+              </p>
+            </div>
 
-          <div>
-            <Label htmlFor="name" className="text-neutral-300">Nome Completo</Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="Seu nome completo"
-              disabled
-              className="mt-1.5"
-            />
-            <p className="text-xs text-neutral-500 mt-1.5">
-              Funcionalidade em desenvolvimento
-            </p>
-          </div>
+            <div>
+              <Label htmlFor="full_name" className="text-neutral-300">
+                Nome Completo
+              </Label>
+              <Input
+                id="full_name"
+                type="text"
+                autoComplete="name"
+                placeholder="Seu nome completo"
+                disabled={saving}
+                className="mt-1.5"
+                {...register('full_name')}
+              />
+              {errors.full_name ? (
+                <p className="text-xs text-red-500 mt-1.5">
+                  {errors.full_name.message}
+                </p>
+              ) : (
+                <p className="text-xs text-neutral-500 mt-1.5">
+                  Informe seu nome e sobrenome
+                </p>
+              )}
+            </div>
 
-          <div className="pt-2">
-            <Button disabled>Salvar Alterações</Button>
-          </div>
+            {feedback && (
+              <div
+                className={
+                  feedback.type === 'success'
+                    ? 'rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-400'
+                    : 'rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400'
+                }
+              >
+                {feedback.message}
+              </div>
+            )}
+
+            <div className="pt-2">
+              <Button type="submit" disabled={saving || !isDirty}>
+                {saving ? 'Salvando...' : 'Salvar Alterações'}
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
 

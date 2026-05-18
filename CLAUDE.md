@@ -22,7 +22,7 @@ Next.js 15 App Router + TypeScript + Tailwind CSS + Supabase (PostgreSQL + Auth)
 ### Routing (App Router)
 
 - `app/(auth)/` — Login (`login/`) and signup (`cadastro/`) with a centered layout
-- `app/(dashboard)/` — Protected routes: `dashboard/`, `transacoes/`, `categorias/`, `calendario/`, `relatorios/`, `configuracoes/` with sidebar+header layout
+- `app/(dashboard)/` — Protected routes: `dashboard/`, `transacoes/`, `categorias/`, `calendario/`, `estatisticas/`, `relatorio-ia/`, `assistente-pagamentos/`, `configuracoes/` with sidebar+header layout
 - `app/api/` — API routes: `auth/callback`, `parse-file` (CSV/PDF parsing), `import-statement` (AI-powered via OpenRouter/DeepSeek)
 
 ### State Management

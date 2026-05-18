@@ -9,6 +9,8 @@ import {
   Tag,
   CalendarDays,
   BarChart3,
+  Sparkles,
+  Receipt,
   Settings,
   X,
   LogOut,
@@ -43,9 +45,19 @@ const menuItems = [
     icon: CalendarDays,
   },
   {
-    href: '/relatorios',
+    href: '/assistente-pagamentos',
+    label: 'Pagamentos',
+    icon: Receipt,
+  },
+  {
+    href: '/estatisticas',
     label: UI_TEXT.reports.title,
     icon: BarChart3,
+  },
+  {
+    href: '/relatorio-ia',
+    label: UI_TEXT.reports.aiReport,
+    icon: Sparkles,
   },
   {
     href: '/configuracoes',

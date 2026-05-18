@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { GlobalSearch } from '@/components/shared/global-search'
 import { useTransactionModal } from '@/components/transactions/transaction-modal'
-import { Menu, Bell, Plus, Search } from 'lucide-react'
+import { cn } from '@/lib/utils/cn'
+import { Menu, Bell, Plus, Receipt, Search } from 'lucide-react'
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -19,7 +21,9 @@ const PAGE_TITLES: Record<string, string> = {
   '/contas': 'Contas',
   '/investimentos': 'Investimentos',
   '/configuracoes': 'Configurações',
-  '/relatorios': 'Relatórios',
+  '/estatisticas': 'Estatísticas',
+  '/relatorio-ia': 'Relatório IA',
+  '/assistente-pagamentos': 'Assistente de Pagamentos',
 }
 
 export function Header({ onMenuClick }: HeaderProps) {
@@ -68,6 +72,20 @@ export function Header({ onMenuClick }: HeaderProps) {
 
           {/* Desktop Search */}
           <GlobalSearch />
+
+          <Link
+            href="/assistente-pagamentos"
+            className={cn(
+              'p-2 rounded-lg transition-colors',
+              pathname === '/assistente-pagamentos'
+                ? 'bg-cyan-500/15 text-cyan-400'
+                : 'hover:bg-neutral-800 text-neutral-400 hover:text-cyan-400'
+            )}
+            aria-label="Assistente de pagamentos"
+            title="Assistente de pagamentos"
+          >
+            <Receipt className="h-5 w-5" />
+          </Link>
 
           <button className="relative p-2 hover:bg-neutral-800 rounded-lg transition-colors">
             <Bell className="h-5 w-5 text-neutral-400" />

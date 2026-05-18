@@ -27,7 +27,7 @@ const features = [
   },
   {
     icon: PieChart,
-    title: 'Relatórios Detalhados',
+    title: 'Estatísticas Detalhadas',
     description: 'Análises por categoria, período e tendências para entender seus hábitos financeiros e otimizar seu orçamento.',
     accent: 'violet',
     size: 'large',

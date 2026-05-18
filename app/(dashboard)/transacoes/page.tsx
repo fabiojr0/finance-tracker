@@ -40,6 +40,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import { useFinance } from '@/lib/contexts/finance-context'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { formatDate } from '@/lib/utils/format-date'
@@ -57,6 +58,7 @@ export default function TransactionsPage() {
   } = useFinance()
 
   const { openModal, openEditModal } = useTransactionModal()
+  const confirm = useConfirm()
 
   // Import modal
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
@@ -194,7 +196,16 @@ export default function TransactionsPage() {
   }, [filteredAndSortedTransactions])
 
   const handleDelete = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir esta transação?')) {
+    const transaction = transactions.find((t) => t.id === id)
+    const ok = await confirm({
+      title: 'Excluir transação?',
+      description: transaction
+        ? `"${transaction.description}" será removida. Esta ação não pode ser desfeita.`
+        : 'Esta ação não pode ser desfeita.',
+      confirmLabel: 'Excluir',
+      variant: 'destructive',
+    })
+    if (ok) {
       await deleteTransaction(id)
     }
   }

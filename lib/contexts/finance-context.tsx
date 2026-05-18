@@ -17,6 +17,7 @@ interface FinanceContextType {
   bulkCreateTransactions: (inputs: CreateTransactionInput[]) => Promise<{ data: TransactionWithCategory[] | null; error: string | null }>
   updateTransaction: (id: string, input: Partial<CreateTransactionInput>) => Promise<{ data: TransactionWithCategory | null; error: string | null }>
   deleteTransaction: (id: string) => Promise<{ error: string | null }>
+  deleteSeries: (seriesId: string) => Promise<{ count: number; error: string | null }>
   refetchTransactions: () => Promise<void>
 
   // Categories
@@ -176,6 +177,25 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase])
 
+  const deleteSeries = useCallback(async (seriesId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('series_id', seriesId)
+        .select('id')
+
+      if (error) throw error
+
+      const ids = new Set(((data as { id: string }[]) ?? []).map((r) => r.id))
+      setTransactions((prev) => prev.filter((t) => !ids.has(t.id)))
+      return { count: ids.size, error: null }
+    } catch (err) {
+      console.error('Error deleting series:', err)
+      return { count: 0, error: 'Erro ao excluir série' }
+    }
+  }, [supabase])
+
   // Categories functions
   const fetchCategories = useCallback(async () => {
     try {
@@ -279,6 +299,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         bulkCreateTransactions,
         updateTransaction,
         deleteTransaction,
+        deleteSeries,
         refetchTransactions: fetchTransactions,
         categories,
         categoriesLoading,

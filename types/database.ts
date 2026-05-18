@@ -86,6 +86,7 @@ export interface Database {
           status: 'pendente' | 'concluida' | 'cancelada'
           is_recurring: boolean
           recurring_frequency: string | null
+          series_id: string | null
           tags: string[] | null
           external_id: string | null
           created_at: string
@@ -103,6 +104,7 @@ export interface Database {
           status?: 'pendente' | 'concluida' | 'cancelada'
           is_recurring?: boolean
           recurring_frequency?: string | null
+          series_id?: string | null
           tags?: string[] | null
           external_id?: string | null
           created_at?: string
@@ -120,6 +122,7 @@ export interface Database {
           status?: 'pendente' | 'concluida' | 'cancelada'
           is_recurring?: boolean
           recurring_frequency?: string | null
+          series_id?: string | null
           tags?: string[] | null
           external_id?: string | null
           created_at?: string

@@ -64,7 +64,7 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Relatórios</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Estatísticas</h1>
           <p className="text-neutral-400 text-sm mt-1">
             Análises e gráficos das suas finanças
           </p>

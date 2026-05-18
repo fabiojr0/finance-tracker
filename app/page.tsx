@@ -76,7 +76,7 @@ export default function Home() {
               <div className="rounded-xl bg-blue-500/15 p-2.5 w-fit mb-4">
                 <PieChart className="h-5 w-5 text-blue-400" />
               </div>
-              <h3 className="text-lg font-semibold mb-2 text-white">Relatórios</h3>
+              <h3 className="text-lg font-semibold mb-2 text-white">Estatísticas</h3>
               <p className="text-neutral-400 text-sm leading-relaxed">
                 Gráficos e análises detalhadas para entender melhor seus hábitos financeiros.
               </p>

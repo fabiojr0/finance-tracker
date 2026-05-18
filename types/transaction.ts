@@ -27,6 +27,7 @@ export interface CreateTransactionInput {
   status?: TransactionStatus
   is_recurring?: boolean
   recurring_frequency?: string
+  series_id?: string | null
   tags?: string[]
   external_id?: string | null
 }

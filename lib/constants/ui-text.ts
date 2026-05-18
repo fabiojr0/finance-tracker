@@ -76,7 +76,8 @@ export const UI_TEXT = {
     noTransactions: 'Sem transações',
   },
   reports: {
-    title: 'Relatórios',
+    title: 'Estatísticas',
+    aiReport: 'Relatório IA',
     spendingByCategory: 'Gastos por Categoria',
     incomeVsExpenses: 'Receitas vs Despesas',
     monthlyComparison: 'Comparação Mensal',
