@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Wallet, TrendingUp, TrendingDown, ArrowDownLeft, ArrowUpRight, LineChart, ArrowRight } from 'lucide-react'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { FinancialEvolutionChart } from '@/components/dashboard/financial-evolution-chart'
@@ -13,6 +13,7 @@ import { CategoryIcon } from '@/components/shared/category-icon'
 import { PeriodSelector, getDateRange, getPreviousPeriodRange, PeriodKey } from '@/components/shared/period-selector'
 import { useFinance } from '@/lib/contexts/finance-context'
 import { useUser } from '@/lib/hooks/use-user'
+import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { formatDate } from '@/lib/utils/format-date'
 import Link from 'next/link'
@@ -24,16 +25,45 @@ function getGreeting() {
   return 'Boa noite'
 }
 
-function getFirstName(email?: string) {
-  if (!email) return ''
-  const name = email.split('@')[0]
-  return name.charAt(0).toUpperCase() + name.slice(1)
+function capitalize(value: string) {
+  return value.charAt(0).toLocaleUpperCase('pt-BR') + value.slice(1).toLocaleLowerCase('pt-BR')
+}
+
+function getDisplayName(fullName?: string | null, email?: string | null) {
+  const trimmed = fullName?.trim()
+  if (trimmed) {
+    const firstName = trimmed.split(/\s+/)[0]
+    if (firstName) return capitalize(firstName)
+  }
+  if (email) {
+    const name = email.split('@')[0]
+    if (name) return capitalize(name)
+  }
+  return ''
 }
 
 export default function DashboardPage() {
   const { transactions, transactionsLoading: loading } = useFinance()
   const { user } = useUser()
+  const [fullName, setFullName] = useState<string | null>(null)
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>('custom')
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    const supabase = createClient()
+    supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (!cancelled) setFullName(data?.full_name ?? null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
 
   const dateRange = useMemo(() => getDateRange(selectedPeriod), [selectedPeriod])
   const prevRange = useMemo(() => getPreviousPeriodRange(selectedPeriod), [selectedPeriod])
@@ -157,7 +187,7 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            {getGreeting()}, {getFirstName(user?.email)}
+            {getGreeting()}, {getDisplayName(fullName, user?.email)}
           </h2>
           <p className="text-sm sm:text-base text-neutral-400 mt-1">
             Aqui está o resumo das suas finanças
