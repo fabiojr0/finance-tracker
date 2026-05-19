@@ -129,6 +129,41 @@ export interface Database {
           updated_at?: string
         }
       }
+      ai_reports: {
+        Row: {
+          id: string
+          user_id: string
+          start_date: string
+          end_date: string
+          period_label: string | null
+          custom_prompt: string | null
+          report: Json
+          summary: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          start_date: string
+          end_date: string
+          period_label?: string | null
+          custom_prompt?: string | null
+          report: Json
+          summary: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          start_date?: string
+          end_date?: string
+          period_label?: string | null
+          custom_prompt?: string | null
+          report?: Json
+          summary?: Json
+          created_at?: string
+        }
+      }
       budgets: {
         Row: {
           id: string

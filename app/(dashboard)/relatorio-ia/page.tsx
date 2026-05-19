@@ -1,11 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { DateInput } from '@/components/ui/date-input'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import {
   PeriodSelector,
   getDateRange,
@@ -23,6 +24,11 @@ import {
   AlertTriangle,
   Lightbulb,
   ListChecks,
+  History,
+  Trash2,
+  Eye,
+  Calendar,
+  X,
 } from 'lucide-react'
 
 interface CategoryItem {
@@ -51,8 +57,31 @@ interface ReportSummary {
 }
 
 interface ReportResponse {
+  id: string | null
+  createdAt: string
   report: AIReport
   summary: ReportSummary
+}
+
+interface SavedReportListItem {
+  id: string
+  start_date: string
+  end_date: string
+  period_label: string | null
+  custom_prompt: string | null
+  summary: ReportSummary
+  created_at: string
+}
+
+interface SavedReportFull {
+  id: string
+  start_date: string
+  end_date: string
+  period_label: string | null
+  custom_prompt: string | null
+  report: AIReport
+  summary: ReportSummary
+  created_at: string
 }
 
 const PERIOD_LABELS: Record<PeriodKey, string> = {
@@ -82,7 +111,26 @@ function firstDayOfMonthISO(): string {
   return toISO(new Date(d.getFullYear(), d.getMonth(), 1))
 }
 
+function formatDate(iso: string): string {
+  const [y, m, d] = iso.split('-')
+  if (!y || !m || !d) return iso
+  return `${d}/${m}/${y}`
+}
+
+function formatDateTime(iso: string): string {
+  const dt = new Date(iso)
+  if (Number.isNaN(dt.getTime())) return iso
+  return dt.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export default function AIReportPage() {
+  const confirm = useConfirm()
   const [period, setPeriod] = useState<PeriodKey>('this-month')
   const [customStart, setCustomStart] = useState(firstDayOfMonthISO())
   const [customEnd, setCustomEnd] = useState(todayISO())
@@ -90,6 +138,12 @@ export default function AIReportPage() {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<ReportResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const [savedReports, setSavedReports] = useState<SavedReportListItem[]>([])
+  const [loadingSaved, setLoadingSaved] = useState(true)
+  const [activeSavedId, setActiveSavedId] = useState<string | null>(null)
+  const [openingId, setOpeningId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const resolvedRange = useMemo(() => {
     if (period === 'custom') {
@@ -102,6 +156,28 @@ export default function AIReportPage() {
       endDate: toISO(range.endDate),
     }
   }, [period, customStart, customEnd])
+
+  const loadSavedReports = useCallback(async () => {
+    setLoadingSaved(true)
+    try {
+      const res = await fetch('/api/ai-report/saved')
+      const json = await res.json()
+      if (!res.ok) {
+        toast.error(json?.error || 'Erro ao carregar relatórios salvos')
+        return
+      }
+      setSavedReports((json.reports as SavedReportListItem[]) ?? [])
+    } catch (err) {
+      console.error(err)
+      toast.error('Falha ao carregar relatórios salvos')
+    } finally {
+      setLoadingSaved(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadSavedReports()
+  }, [loadSavedReports])
 
   const handleGenerate = async () => {
     if (!resolvedRange) {
@@ -117,6 +193,7 @@ export default function AIReportPage() {
     setLoading(true)
     setError(null)
     setData(null)
+    setActiveSavedId(null)
 
     try {
       const res = await fetch('/api/ai-report', {
@@ -139,8 +216,11 @@ export default function AIReportPage() {
         return
       }
 
-      setData(json as ReportResponse)
-      toast.success('Relatório gerado!')
+      const response = json as ReportResponse
+      setData(response)
+      setActiveSavedId(response.id)
+      toast.success('Relatório gerado e salvo!')
+      loadSavedReports()
     } catch (err) {
       console.error(err)
       const message = 'Falha ao se comunicar com o servidor.'
@@ -149,6 +229,82 @@ export default function AIReportPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleOpenSaved = async (id: string) => {
+    if (openingId) return
+    setOpeningId(id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/ai-report/saved/${id}`)
+      const json = await res.json()
+      if (!res.ok) {
+        toast.error(json?.error || 'Erro ao abrir relatório')
+        return
+      }
+      const full = json as SavedReportFull
+      setData({
+        id: full.id,
+        createdAt: full.created_at,
+        report: full.report,
+        summary: full.summary,
+      })
+      setActiveSavedId(full.id)
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('Falha ao abrir relatório')
+    } finally {
+      setOpeningId(null)
+    }
+  }
+
+  const handleDeleteSaved = async (item: SavedReportListItem) => {
+    const ok = await confirm({
+      title: 'Excluir relatório?',
+      description: (
+        <>
+          O relatório de{' '}
+          <strong>
+            {formatDate(item.start_date)} a {formatDate(item.end_date)}
+          </strong>{' '}
+          gerado em {formatDateTime(item.created_at)} será removido permanentemente.
+        </>
+      ),
+      confirmLabel: 'Excluir',
+      variant: 'destructive',
+    })
+    if (!ok) return
+
+    setDeletingId(item.id)
+    try {
+      const res = await fetch(`/api/ai-report/saved/${item.id}`, {
+        method: 'DELETE',
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(json?.error || 'Erro ao excluir relatório')
+        return
+      }
+      toast.success('Relatório excluído')
+      setSavedReports((prev) => prev.filter((r) => r.id !== item.id))
+      if (activeSavedId === item.id) {
+        setData(null)
+        setActiveSavedId(null)
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('Falha ao excluir relatório')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleCloseReport = () => {
+    setData(null)
+    setActiveSavedId(null)
   }
 
   return (
@@ -280,16 +436,224 @@ export default function AIReportPage() {
         </Card>
       )}
 
-      {data && <ReportResult data={data} />}
+      {data && <ReportResult data={data} onClose={handleCloseReport} />}
+
+      <SavedReportsList
+        items={savedReports}
+        loading={loadingSaved}
+        activeId={activeSavedId}
+        openingId={openingId}
+        deletingId={deletingId}
+        onOpen={handleOpenSaved}
+        onDelete={handleDeleteSaved}
+      />
     </div>
   )
 }
 
-function ReportResult({ data }: { data: ReportResponse }) {
-  const { report, summary } = data
+function SavedReportsList({
+  items,
+  loading,
+  activeId,
+  openingId,
+  deletingId,
+  onOpen,
+  onDelete,
+}: {
+  items: SavedReportListItem[]
+  loading: boolean
+  activeId: string | null
+  openingId: string | null
+  deletingId: string | null
+  onOpen: (id: string) => void
+  onDelete: (item: SavedReportListItem) => void
+}) {
+  return (
+    <Card>
+      <CardHeader className="px-4 sm:px-6">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="rounded-lg bg-blue-500/15 p-1.5">
+              <History className="h-4 w-4 text-blue-400" />
+            </div>
+            <CardTitle className="text-base sm:text-lg">
+              Relatórios salvos
+            </CardTitle>
+          </div>
+          {!loading && items.length > 0 && (
+            <span className="text-xs text-neutral-500">
+              {items.length} {items.length === 1 ? 'relatório' : 'relatórios'}
+            </span>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="px-4 sm:px-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 text-neutral-500 animate-spin" />
+          </div>
+        ) : items.length === 0 ? (
+          <p className="text-sm text-neutral-500 text-center py-6">
+            Nenhum relatório salvo ainda. Gere o primeiro acima.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {items.map((item) => {
+              const isActive = activeId === item.id
+              const isOpening = openingId === item.id
+              const isDeleting = deletingId === item.id
+              return (
+                <li
+                  key={item.id}
+                  className={cn(
+                    'rounded-lg border p-3 transition-colors',
+                    isActive
+                      ? 'border-purple-500/40 bg-purple-500/5'
+                      : 'border-neutral-800 bg-neutral-900/40 hover:border-neutral-700'
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium text-neutral-100">
+                          {item.period_label || 'Personalizado'}
+                        </span>
+                        {isActive && (
+                          <span className="inline-flex items-center rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 px-2 py-0.5 text-[10px] font-medium">
+                            Visualizando
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-400">
+                        <span className="inline-flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(item.start_date)} a {formatDate(item.end_date)}
+                        </span>
+                        <span className="text-neutral-500">
+                          Gerado em {formatDateTime(item.created_at)}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-neutral-500">
+                        <span>
+                          Receitas:{' '}
+                          <span className="text-emerald-400 tabular-nums">
+                            {formatCurrency(item.summary?.income ?? 0)}
+                          </span>
+                        </span>
+                        <span>
+                          Despesas:{' '}
+                          <span className="text-red-400 tabular-nums">
+                            {formatCurrency(item.summary?.expenses ?? 0)}
+                          </span>
+                        </span>
+                        <span>
+                          Saldo:{' '}
+                          <span
+                            className={cn(
+                              'tabular-nums',
+                              (item.summary?.balance ?? 0) >= 0
+                                ? 'text-emerald-400'
+                                : 'text-red-400'
+                            )}
+                          >
+                            {formatCurrency(item.summary?.balance ?? 0)}
+                          </span>
+                        </span>
+                        <span>
+                          {item.summary?.transactionCount ?? 0} transações
+                        </span>
+                      </div>
+                      {item.custom_prompt && (
+                        <p className="mt-1.5 text-[11px] text-neutral-500 italic line-clamp-2">
+                          “{item.custom_prompt}”
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        title="Visualizar"
+                        onClick={() => onOpen(item.id)}
+                        disabled={isOpening || isDeleting}
+                      >
+                        {isOpening ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        title="Excluir"
+                        onClick={() => onDelete(item)}
+                        disabled={isDeleting || isOpening}
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function ReportResult({
+  data,
+  onClose,
+}: {
+  data: ReportResponse
+  onClose: () => void
+}) {
+  const { report, summary, createdAt } = data
 
   return (
     <div className="space-y-6">
+      <Card className="border-purple-500/20 bg-purple-500/[0.03]">
+        <CardContent className="px-4 sm:px-6 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-300">
+              <span className="inline-flex items-center gap-1.5 font-medium text-neutral-100">
+                <Calendar className="h-3.5 w-3.5 text-purple-400" />
+                {formatDate(summary.period.start)} a {formatDate(summary.period.end)}
+              </span>
+              {summary.period.label && (
+                <span className="text-neutral-400">
+                  · {summary.period.label}
+                </span>
+              )}
+              <span className="text-neutral-500">
+                · Gerado em {formatDateTime(createdAt)}
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              title="Fechar relatório"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <SummaryStat
           label="Receitas"

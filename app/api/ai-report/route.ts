@@ -333,17 +333,39 @@ RETORNE APENAS JSON VÁLIDO, sem texto adicional, neste formato exato:
       )
     }
 
+    const summary = {
+      period: { start: startDate, end: endDate, label: periodLabel ?? null },
+      income,
+      expenses,
+      investments,
+      balance,
+      savingsRate,
+      transactionCount: rows.length,
+    }
+
+    const { data: saved, error: saveError } = await supabase
+      .from('ai_reports')
+      .insert({
+        user_id: user.id,
+        start_date: startDate,
+        end_date: endDate,
+        period_label: periodLabel ?? null,
+        custom_prompt: customPrompt?.trim() || null,
+        report: parsed as never,
+        summary: summary as never,
+      })
+      .select('id, created_at')
+      .single()
+
+    if (saveError) {
+      console.error('AI report save error:', saveError)
+    }
+
     return NextResponse.json({
+      id: saved?.id ?? null,
+      createdAt: saved?.created_at ?? new Date().toISOString(),
       report: parsed,
-      summary: {
-        period: { start: startDate, end: endDate, label: periodLabel ?? null },
-        income,
-        expenses,
-        investments,
-        balance,
-        savingsRate,
-        transactionCount: rows.length,
-      },
+      summary,
     })
   } catch (err) {
     clearTimeout(timeoutId)
