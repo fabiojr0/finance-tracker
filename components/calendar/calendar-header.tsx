@@ -1,11 +1,11 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { UI_TEXT } from '@/lib/constants/ui-text'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { calendarDict } from '@/lib/i18n/sections/calendar'
 import { cn } from '@/lib/utils/cn'
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
 import {
-  format,
   addMonths,
   subMonths,
   addYears,
@@ -15,7 +15,6 @@ import {
   startOfWeek,
   endOfWeek,
 } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 
 export type CalendarViewMode = 'year' | 'month' | 'week'
 
@@ -32,6 +31,9 @@ export function CalendarHeader({
   onDateChange,
   onViewModeChange,
 }: CalendarHeaderProps) {
+  const { locale, localeTag } = usePreferences()
+  const t = calendarDict[locale]
+
   const handlePrev = () => {
     switch (viewMode) {
       case 'year':
@@ -67,23 +69,33 @@ export function CalendarHeader({
   const getTitle = () => {
     switch (viewMode) {
       case 'year':
-        return format(currentDate, 'yyyy')
+        return currentDate.toLocaleDateString(localeTag, { year: 'numeric' })
       case 'month':
-        return format(currentDate, 'MMMM yyyy', { locale: ptBR })
+        return currentDate.toLocaleDateString(localeTag, {
+          month: 'long',
+          year: 'numeric',
+        })
       case 'week': {
         const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 })
         const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 })
-        const startStr = format(weekStart, 'dd MMM', { locale: ptBR })
-        const endStr = format(weekEnd, 'dd MMM yyyy', { locale: ptBR })
+        const startStr = weekStart.toLocaleDateString(localeTag, {
+          day: '2-digit',
+          month: 'short',
+        })
+        const endStr = weekEnd.toLocaleDateString(localeTag, {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        })
         return `${startStr} – ${endStr}`
       }
     }
   }
 
   const viewModes: { key: CalendarViewMode; label: string }[] = [
-    { key: 'year', label: UI_TEXT.calendar.viewYear },
-    { key: 'month', label: UI_TEXT.calendar.viewMonth },
-    { key: 'week', label: UI_TEXT.calendar.viewWeek },
+    { key: 'year', label: t.viewYear },
+    { key: 'month', label: t.viewMonth },
+    { key: 'week', label: t.viewWeek },
   ]
 
   return (
@@ -118,7 +130,7 @@ export function CalendarHeader({
           className="h-7 text-xs px-2.5"
         >
           <CalendarDays className="h-3 w-3 mr-1" />
-          {UI_TEXT.calendar.today}
+          {t.today}
         </Button>
       </div>
 

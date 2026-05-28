@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from 'recharts'
 import { TransactionWithCategory } from '@/types/transaction'
-import { formatCurrency } from '@/lib/utils/format-currency'
+import { usePreferences } from '@/lib/contexts/preferences-context'
 import { CategoryIcon } from '@/components/shared/category-icon'
 
 interface ExpensesByCategoryChartProps {
@@ -32,6 +32,8 @@ const COLORS = [
 ]
 
 export function ExpensesByCategoryChart({ transactions, startDate, endDate }: ExpensesByCategoryChartProps) {
+  const { t, formatMoney } = usePreferences()
+
   const { chartData, total } = useMemo(() => {
     let currentMonthExpenses
 
@@ -63,7 +65,7 @@ export function ExpensesByCategoryChart({ transactions, startDate, endDate }: Ex
     const categoryMap: { [key: string]: { name: string; value: number; icon: string | null; color: string | null } } = {}
 
     currentMonthExpenses.forEach((transaction) => {
-      const categoryName = transaction.category?.name || 'Sem categoria'
+      const categoryName = transaction.category?.name || t.dashboard.noCategory
       const categoryIcon = transaction.category?.icon || null
       const categoryColor = transaction.category?.color || null
 
@@ -86,7 +88,7 @@ export function ExpensesByCategoryChart({ transactions, startDate, endDate }: Ex
     const totalAmount = data.reduce((sum, item) => sum + item.value, 0)
 
     return { chartData: data, total: totalAmount }
-  }, [transactions, startDate, endDate])
+  }, [transactions, startDate, endDate, t])
 
   const hasData = chartData.length > 0
 
@@ -97,7 +99,7 @@ export function ExpensesByCategoryChart({ transactions, startDate, endDate }: Ex
           <div className="rounded-lg bg-red-500/15 p-1.5">
             <PieChartIcon className="h-4 w-4 text-red-400" />
           </div>
-          <CardTitle className="text-base">Gastos por Categoria</CardTitle>
+          <CardTitle className="text-base">{t.dashboard.expensesByCategory}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="pt-0 px-4 sm:px-6">
@@ -107,9 +109,9 @@ export function ExpensesByCategoryChart({ transactions, startDate, endDate }: Ex
               <div className="mx-auto mb-3 rounded-full bg-neutral-800/60 p-3 w-fit">
                 <PieChartIcon className="h-6 w-6 text-neutral-500" />
               </div>
-              <p className="text-neutral-400 text-sm font-medium">Nenhuma despesa neste período</p>
+              <p className="text-neutral-400 text-sm font-medium">{t.dashboard.noExpensesInPeriod}</p>
               <p className="text-xs text-neutral-500 mt-1">
-                Adicione despesas para visualizar
+                {t.dashboard.addExpensesToView}
               </p>
             </div>
           </div>
@@ -153,7 +155,7 @@ export function ExpensesByCategoryChart({ transactions, startDate, endDate }: Ex
                       fontWeight: 600,
                     }}
                     formatter={(value) =>
-                      typeof value === 'number' ? formatCurrency(value) : 'R$ 0,00'
+                      typeof value === 'number' ? formatMoney(value) : formatMoney(0)
                     }
                   />
                   {/* Center label */}
@@ -165,7 +167,7 @@ export function ExpensesByCategoryChart({ transactions, startDate, endDate }: Ex
                     className="fill-neutral-400"
                     style={{ fontSize: '11px' }}
                   >
-                    Total
+                    {t.dashboard.total}
                   </text>
                   <text
                     x="50%"
@@ -175,7 +177,7 @@ export function ExpensesByCategoryChart({ transactions, startDate, endDate }: Ex
                     className="fill-white"
                     style={{ fontSize: '13px', fontWeight: 700 }}
                   >
-                    {formatCurrency(total)}
+                    {formatMoney(total)}
                   </text>
                 </PieChart>
               </ResponsiveContainer>
@@ -194,7 +196,7 @@ export function ExpensesByCategoryChart({ transactions, startDate, endDate }: Ex
                         <span className="text-xs text-neutral-300 truncate">{item.name}</span>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-xs font-medium text-neutral-300">{formatCurrency(item.value)}</span>
+                        <span className="text-xs font-medium text-neutral-300">{formatMoney(item.value)}</span>
                         <span className="text-[10px] text-neutral-500 w-8 text-right">{percentage.toFixed(0)}%</span>
                       </div>
                     </div>

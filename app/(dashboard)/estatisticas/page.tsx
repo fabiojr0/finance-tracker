@@ -7,10 +7,11 @@ import { TrendChart } from '@/components/reports/trend-chart'
 import { MonthlyChart } from '@/components/dashboard/monthly-chart'
 import { PeriodSelector, getDateRange, PeriodKey } from '@/components/shared/period-selector'
 import { useFinance } from '@/lib/contexts/finance-context'
-import { formatCurrency } from '@/lib/utils/format-currency'
+import { usePreferences } from '@/lib/contexts/preferences-context'
 
 export default function ReportsPage() {
   const { transactions, transactionsLoading: loading } = useFinance()
+  const { t, formatMoney } = usePreferences()
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>('last-12-months')
 
   const dateRange = useMemo(() => getDateRange(selectedPeriod), [selectedPeriod])
@@ -64,9 +65,9 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Estatísticas</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{t.statistics.title}</h1>
           <p className="text-neutral-400 text-sm mt-1">
-            Análises e gráficos das suas finanças
+            {t.statistics.subtitle}
           </p>
         </div>
         <PeriodSelector selected={selectedPeriod} onChange={setSelectedPeriod} />
@@ -75,27 +76,27 @@ export default function ReportsPage() {
       {/* Summary stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 sm:p-4">
-          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">Receitas</p>
+          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">{t.transactionTypes.receita}</p>
           <p className="text-sm sm:text-lg font-bold text-emerald-400 mt-0.5 truncate tabular-nums">
-            {formatCurrency(summary.income)}
+            {formatMoney(summary.income)}
           </p>
         </div>
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 sm:p-4">
-          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">Despesas</p>
+          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">{t.transactionTypes.despesa}</p>
           <p className="text-sm sm:text-lg font-bold text-red-400 mt-0.5 truncate tabular-nums">
-            {formatCurrency(summary.expenses)}
+            {formatMoney(summary.expenses)}
           </p>
         </div>
         <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 sm:p-4">
-          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">Investimentos</p>
+          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">{t.transactionTypes.investimento}</p>
           <p className="text-sm sm:text-lg font-bold text-blue-400 mt-0.5 truncate tabular-nums">
-            {formatCurrency(summary.investments)}
+            {formatMoney(summary.investments)}
           </p>
         </div>
         <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-3 sm:p-4">
-          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">Média mensal</p>
+          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">{t.statistics.monthlyAverage}</p>
           <p className="text-sm sm:text-lg font-bold text-orange-400 mt-0.5 truncate tabular-nums">
-            {formatCurrency(summary.avgExpenses)}
+            {formatMoney(summary.avgExpenses)}
           </p>
         </div>
       </div>

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PieChart as PieChartIcon } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { TransactionWithCategory } from '@/types/transaction'
-import { formatCurrency } from '@/lib/utils/format-currency'
+import { usePreferences } from '@/lib/contexts/preferences-context'
 
 interface CategoryChartProps {
   transactions: TransactionWithCategory[]
@@ -27,6 +27,8 @@ const COLORS = [
 ]
 
 export function CategoryChart({ transactions, startDate, endDate }: CategoryChartProps) {
+  const { t, formatMoney } = usePreferences()
+
   const chartData = useMemo(() => {
     const expenses = transactions.filter((t) => {
       const date = new Date(t.date)
@@ -83,7 +85,7 @@ export function CategoryChart({ transactions, startDate, endDate }: CategoryChar
           <div className="rounded-lg bg-red-500/15 p-1.5">
             <PieChartIcon className="h-4 w-4 text-red-400" />
           </div>
-          <CardTitle className="text-base sm:text-lg">Gastos por Categoria</CardTitle>
+          <CardTitle className="text-base sm:text-lg">{t.statistics.categoryChartTitle}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
@@ -93,9 +95,9 @@ export function CategoryChart({ transactions, startDate, endDate }: CategoryChar
               <div className="mx-auto mb-3 rounded-full bg-neutral-800/60 p-3 w-fit">
                 <PieChartIcon className="h-6 w-6 text-neutral-500" />
               </div>
-              <p className="text-neutral-400 text-sm font-medium">Nenhum dado para exibir</p>
+              <p className="text-neutral-400 text-sm font-medium">{t.statistics.noData}</p>
               <p className="text-xs text-neutral-500 mt-1">
-                Adicione despesas para visualizar o gráfico
+                {t.statistics.addExpensesHint}
               </p>
             </div>
           </div>
@@ -133,7 +135,7 @@ export function CategoryChart({ transactions, startDate, endDate }: CategoryChar
                     itemStyle={{ color: '#e5e5e5' }}
                     labelStyle={{ color: '#a3a3a3', fontWeight: 600 }}
                     formatter={(value) =>
-                      typeof value === 'number' ? formatCurrency(value) : 'R$ 0,00'
+                      typeof value === 'number' ? formatMoney(value) : formatMoney(0)
                     }
                   />
                   <text
@@ -144,7 +146,7 @@ export function CategoryChart({ transactions, startDate, endDate }: CategoryChar
                     className="fill-neutral-400"
                     style={{ fontSize: '12px' }}
                   >
-                    Total
+                    {t.statistics.total}
                   </text>
                   <text
                     x="50%"
@@ -154,7 +156,7 @@ export function CategoryChart({ transactions, startDate, endDate }: CategoryChar
                     className="fill-white"
                     style={{ fontSize: '14px', fontWeight: 700 }}
                   >
-                    {formatCurrency(total)}
+                    {formatMoney(total)}
                   </text>
                 </PieChart>
               </ResponsiveContainer>
@@ -170,7 +172,7 @@ export function CategoryChart({ transactions, startDate, endDate }: CategoryChar
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs text-neutral-300 truncate mr-2">{item.name}</span>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-xs font-medium text-neutral-300">{formatCurrency(item.value)}</span>
+                        <span className="text-xs font-medium text-neutral-300">{formatMoney(item.value)}</span>
                         <span className="text-[10px] text-neutral-500 w-8 text-right">{percentage.toFixed(0)}%</span>
                       </div>
                     </div>

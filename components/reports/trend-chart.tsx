@@ -14,7 +14,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { TransactionWithCategory } from '@/types/transaction'
-import { formatCurrency } from '@/lib/utils/format-currency'
+import { usePreferences } from '@/lib/contexts/preferences-context'
 
 interface TrendChartProps {
   transactions: TransactionWithCategory[]
@@ -23,6 +23,8 @@ interface TrendChartProps {
 }
 
 export function TrendChart({ transactions, startDate, endDate }: TrendChartProps) {
+  const { t, formatMoney, localeTag } = usePreferences()
+
   const chartData = useMemo(() => {
     const months: { [key: string]: { receitas: number; despesas: number; saldo: number } } = {}
 
@@ -58,7 +60,7 @@ export function TrendChart({ transactions, startDate, endDate }: TrendChartProps
     return Object.entries(months).map(([key, value]) => {
       const [year, month] = key.split('-')
       const date = new Date(parseInt(year), parseInt(month) - 1, 1)
-      const monthName = date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+      const monthName = date.toLocaleDateString(localeTag, { month: 'short', year: '2-digit' })
 
       saldoAcumulado += value.receitas - value.despesas
 
@@ -69,7 +71,7 @@ export function TrendChart({ transactions, startDate, endDate }: TrendChartProps
         Saldo: saldoAcumulado,
       }
     })
-  }, [transactions, startDate, endDate])
+  }, [transactions, startDate, endDate, localeTag])
 
   const hasData = chartData.some((data) => data.Receitas > 0 || data.Despesas > 0)
 
@@ -93,7 +95,7 @@ export function TrendChart({ transactions, startDate, endDate }: TrendChartProps
           <div className="rounded-lg bg-orange-500/15 p-1.5">
             <TrendingUp className="h-4 w-4 text-orange-400" />
           </div>
-          <CardTitle className="text-base sm:text-lg">Evolução Financeira</CardTitle>
+          <CardTitle className="text-base sm:text-lg">{t.statistics.trendChartTitle}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="px-2 sm:px-6">
@@ -103,9 +105,9 @@ export function TrendChart({ transactions, startDate, endDate }: TrendChartProps
               <div className="mx-auto mb-3 rounded-full bg-neutral-800/60 p-3 w-fit">
                 <TrendingUp className="h-6 w-6 text-neutral-500" />
               </div>
-              <p className="text-neutral-400 text-sm font-medium">Nenhum dado para exibir</p>
+              <p className="text-neutral-400 text-sm font-medium">{t.statistics.noData}</p>
               <p className="text-xs text-neutral-500 mt-1">
-                Adicione transações para visualizar o gráfico
+                {t.statistics.addTransactionsHint}
               </p>
             </div>
           </div>
@@ -136,7 +138,7 @@ export function TrendChart({ transactions, startDate, endDate }: TrendChartProps
                 <Tooltip
                   {...tooltipStyle}
                   formatter={(value) =>
-                    typeof value === 'number' ? formatCurrency(value) : 'R$ 0,00'
+                    typeof value === 'number' ? formatMoney(value) : formatMoney(0)
                   }
                   cursor={{ stroke: '#525252', strokeDasharray: '4 4' }}
                 />
@@ -151,6 +153,7 @@ export function TrendChart({ transactions, startDate, endDate }: TrendChartProps
                 <Line
                   type="monotone"
                   dataKey="Receitas"
+                  name={t.statistics.legendIncome}
                   stroke="#34d399"
                   strokeWidth={2.5}
                   dot={false}
@@ -159,6 +162,7 @@ export function TrendChart({ transactions, startDate, endDate }: TrendChartProps
                 <Line
                   type="monotone"
                   dataKey="Despesas"
+                  name={t.statistics.legendExpenses}
                   stroke="#f87171"
                   strokeWidth={2.5}
                   dot={false}
@@ -167,6 +171,7 @@ export function TrendChart({ transactions, startDate, endDate }: TrendChartProps
                 <Line
                   type="monotone"
                   dataKey="Saldo"
+                  name={t.statistics.legendBalance}
                   stroke="#fb923c"
                   strokeWidth={2.5}
                   dot={false}

@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label'
 import { DateInput } from '@/components/ui/date-input'
 import { PeriodSelector, getDateRange, PeriodKey } from '@/components/shared/period-selector'
 import { useFinance } from '@/lib/contexts/finance-context'
-import { formatCurrency } from '@/lib/utils/format-currency'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { paymentsDict } from '@/lib/i18n/sections/payments'
 import { CreateTransactionInput } from '@/types/transaction'
 import { cn } from '@/lib/utils/cn'
 import { Sparkles, Loader2, Repeat, AlertTriangle, CheckSquare, Square } from 'lucide-react'
@@ -35,11 +36,13 @@ function toISO(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
-const RECURRENCE_LABEL: Record<Suggestion['recurrence'], string> = {
-  unica: 'Única',
-  mensal: 'Mensal',
-  semanal: 'Semanal',
-  anual: 'Anual',
+type PaymentsText = { [K in keyof (typeof paymentsDict)['pt']]: string }
+
+const RECURRENCE_LABEL_KEYS: Record<Suggestion['recurrence'], keyof PaymentsText> = {
+  unica: 'recurrenceLabelOnce',
+  mensal: 'recurrenceLabelMonthly',
+  semanal: 'recurrenceLabelWeekly',
+  anual: 'recurrenceLabelYearly',
 }
 
 const EXPANSION_COUNT: Record<'mensal' | 'semanal' | 'anual', number> = {
@@ -62,6 +65,8 @@ function nextDate(baseISO: string, recurrence: Suggestion['recurrence'], step: n
 
 export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps) {
   const { categories, bulkCreateTransactions } = useFinance()
+  const { locale, t: tCommon, formatMoney } = usePreferences()
+  const t = paymentsDict[locale]
   const [period, setPeriod] = useState<PeriodKey>('last-3-months')
   const [customStart, setCustomStart] = useState(() => {
     const d = new Date()
@@ -92,11 +97,11 @@ export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps)
 
   const handleGenerate = async () => {
     if (!range) {
-      toast.error('Selecione um período válido')
+      toast.error(t.selectValidPeriod)
       return
     }
     if (range.startDate > range.endDate) {
-      toast.error('A data inicial deve ser anterior à final')
+      toast.error(t.startBeforeEnd)
       return
     }
 
@@ -117,7 +122,7 @@ export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps)
       })
       const json = await res.json()
       if (!res.ok) {
-        const message = json?.error || 'Erro ao gerar sugestões'
+        const message = json?.error || t.generateSuggestionsError
         setError(message)
         toast.error(message)
         return
@@ -126,12 +131,12 @@ export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps)
       setSuggestions(list)
       setSelected(new Set(list.map((_, i) => i)))
       if (list.length === 0) {
-        setError('A IA não encontrou pagamentos recorrentes claros no período.')
+        setError(t.noRecurringFound)
       }
     } catch (err) {
       console.error(err)
-      setError('Falha ao se comunicar com o servidor.')
-      toast.error('Falha na comunicação')
+      setError(t.serverError)
+      toast.error(t.communicationFailed)
     } finally {
       setLoading(false)
     }
@@ -156,7 +161,7 @@ export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps)
 
   const handleAdd = async () => {
     if (selected.size === 0) {
-      toast.error('Selecione ao menos uma sugestão')
+      toast.error(t.selectAtLeastOne)
       return
     }
     setSaving(true)
@@ -189,7 +194,7 @@ export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps)
       toast.error(error)
       return
     }
-    toast.success(`${rows.length} pagamento(s) adicionados`)
+    toast.success(t.paymentsAdded.replace('{n}', String(rows.length)))
     onClose()
   }
 
@@ -201,12 +206,11 @@ export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps)
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="sm:max-w-2xl">
-      <ModalHeader onClose={onClose}>Sugestões com IA</ModalHeader>
+      <ModalHeader onClose={onClose}>{t.aiSuggestionsTitle}</ModalHeader>
       <ModalContent>
         <div className="space-y-5">
           <p className="text-sm text-neutral-400">
-            A IA analisa as transações concluídas do período escolhido e sugere
-            pagamentos recorrentes e contas fixas que podem ser agendadas.
+            {t.aiSuggestionsIntro}
           </p>
 
           <div className="space-y-3">
@@ -221,13 +225,13 @@ export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps)
             {period === 'custom' && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-neutral-300 text-xs">Início</Label>
+                  <Label className="text-neutral-300 text-xs">{t.rangeStart}</Label>
                   <div className="mt-1.5">
                     <DateInput value={customStart} onChange={setCustomStart} />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-neutral-300 text-xs">Fim</Label>
+                  <Label className="text-neutral-300 text-xs">{t.rangeEnd}</Label>
                   <div className="mt-1.5">
                     <DateInput value={customEnd} onChange={setCustomEnd} />
                   </div>
@@ -236,7 +240,7 @@ export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps)
             )}
             <div>
               <Label htmlFor="extra-prompt" className="text-neutral-300 text-xs">
-                Instruções extras (opcional)
+                {t.extraInstructions}
               </Label>
               <textarea
                 id="extra-prompt"
@@ -244,7 +248,7 @@ export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps)
                 onChange={(e) => setExtraPrompt(e.target.value)}
                 maxLength={300}
                 rows={2}
-                placeholder="Ex: foque em assinaturas e contas de casa."
+                placeholder={t.extraPromptPlaceholder}
                 className="flex w-full mt-1.5 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 disabled={loading}
               />
@@ -257,12 +261,12 @@ export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps)
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Analisando transações...
+                  {t.analyzingTransactions}
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4" />
-                  {suggestions.length > 0 ? 'Gerar novamente' : 'Gerar sugestões'}
+                  {suggestions.length > 0 ? t.generateAgain : t.generateSuggestions}
                 </>
               )}
             </Button>
@@ -289,11 +293,11 @@ export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps)
                     <Square className="h-4 w-4 text-neutral-500" />
                   )}
                   {selected.size === suggestions.length
-                    ? 'Desmarcar todos'
-                    : 'Selecionar todos'}
+                    ? t.deselectAll
+                    : t.selectAll}
                 </button>
                 <p className="text-xs text-neutral-500">
-                  {selected.size}/{suggestions.length} selecionados
+                  {selected.size}/{suggestions.length} {t.selectedCount}
                 </p>
               </div>
 
@@ -328,16 +332,16 @@ export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps)
                               {s.description}
                             </p>
                             <p className="text-sm font-semibold text-red-400 tabular-nums flex-shrink-0">
-                              {formatCurrency(s.amount)}
+                              {formatMoney(s.amount)}
                             </p>
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                             <span className="inline-flex items-center rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] text-neutral-300">
-                              Vence {s.due_date}
+                              {t.dueOn} {s.due_date}
                             </span>
                             <span className="inline-flex items-center gap-1 rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] text-neutral-300">
                               <Repeat className="h-2.5 w-2.5" />
-                              {RECURRENCE_LABEL[s.recurrence]}
+                              {t[RECURRENCE_LABEL_KEYS[s.recurrence]]}
                             </span>
                             {categoryName && (
                               <span className="inline-flex items-center rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] text-neutral-300">
@@ -359,14 +363,16 @@ export function AISuggestionsModal({ isOpen, onClose }: AISuggestionsModalProps)
 
               <div className="flex justify-end gap-2 pt-2 border-t border-neutral-800">
                 <Button variant="ghost" size="sm" onClick={onClose} disabled={saving}>
-                  Cancelar
+                  {tCommon.common.cancel}
                 </Button>
                 <Button
                   size="sm"
                   onClick={handleAdd}
                   disabled={saving || selected.size === 0}
                 >
-                  {saving ? 'Adicionando...' : `Adicionar ${selected.size} item(ns)`}
+                  {saving
+                    ? t.adding
+                    : t.addItems.replace('{n}', String(selected.size))}
                 </Button>
               </div>
             </div>

@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from 'react'
 import { Upload } from 'lucide-react'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { calendarDict } from '@/lib/i18n/sections/calendar'
 import { useFinance } from '@/lib/contexts/finance-context'
 import { useTransactionModal } from '@/components/transactions/transaction-modal'
 import { CalendarHeader, CalendarViewMode } from '@/components/calendar/calendar-header'
@@ -15,6 +17,8 @@ import { TransactionWithCategory } from '@/types/transaction'
 export default function CalendarPage() {
   const { transactions, transactionsLoading } = useFinance()
   const { openModal, openEditModal } = useTransactionModal()
+  const { locale } = usePreferences()
+  const t = calendarDict[locale]
 
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<CalendarViewMode>('month')
@@ -85,15 +89,15 @@ export default function CalendarPage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            Calendário
+            {t.title}
           </h1>
           <p className="text-neutral-400 text-sm mt-1">
-            Visualize todas as suas transações organizadas por data
+            {t.subtitle}
           </p>
         </div>
         <Button variant="outline" onClick={() => setIsImportModalOpen(true)} size="sm" className="sm:h-10 gap-1.5">
           <Upload className="h-4 w-4" />
-          <span className="hidden sm:inline">Importar Extrato</span>
+          <span className="hidden sm:inline">{t.importStatement}</span>
         </Button>
       </div>
 

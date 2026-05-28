@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label'
 import { IconPicker } from '@/components/shared/icon-picker'
 import { CreateCategoryInput, CategoryType } from '@/types/category'
 import { cn } from '@/lib/utils/cn'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { categoriesDict } from '@/lib/i18n/sections/categories'
 import { TrendingDown, TrendingUp, LineChart, ArrowLeftRight, Tag, Palette } from 'lucide-react'
 
 interface CategoryFormProps {
@@ -19,7 +21,6 @@ interface CategoryFormProps {
 const typeOptions = [
   {
     value: 'despesa',
-    label: 'Despesa',
     icon: TrendingDown,
     color: 'text-red-500',
     bgColor: 'bg-red-500/10',
@@ -27,7 +28,6 @@ const typeOptions = [
   },
   {
     value: 'receita',
-    label: 'Receita',
     icon: TrendingUp,
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
@@ -35,7 +35,6 @@ const typeOptions = [
   },
   {
     value: 'investimento',
-    label: 'Investimento',
     icon: LineChart,
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',
@@ -43,13 +42,12 @@ const typeOptions = [
   },
   {
     value: 'transferencia',
-    label: 'Transferência',
     icon: ArrowLeftRight,
     color: 'text-yellow-500',
     bgColor: 'bg-yellow-500/10',
     borderColor: 'border-yellow-500',
   },
-]
+] as const
 
 export function CategoryForm({
   onSubmit,
@@ -57,6 +55,9 @@ export function CategoryForm({
   defaultValues,
   isLoading,
 }: CategoryFormProps) {
+  const { locale, t: tCommon } = usePreferences()
+  const t = categoriesDict[locale]
+
   const [formData, setFormData] = useState<CreateCategoryInput>({
     name: defaultValues?.name || '',
     type: defaultValues?.type || 'despesa',
@@ -75,7 +76,7 @@ export function CategoryForm({
       <div className="space-y-2">
         <label className="text-sm font-medium text-neutral-300 flex items-center gap-2">
           <Tag className="h-4 w-4 text-neutral-500" />
-          Tipo de Categoria
+          {t.categoryType}
         </label>
         <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
           {typeOptions.map((option) => {
@@ -97,7 +98,7 @@ export function CategoryForm({
               >
                 <Icon className={cn('h-4 w-4 flex-shrink-0', isSelected ? option.color : 'text-neutral-400')} />
                 <span className={cn('text-xs sm:text-sm font-medium', isSelected ? option.color : 'text-neutral-300')}>
-                  {option.label}
+                  {tCommon.transactionTypes[option.value]}
                 </span>
               </button>
             )
@@ -109,13 +110,13 @@ export function CategoryForm({
       <div className="space-y-2">
         <Label htmlFor="name" className="text-sm font-medium text-neutral-300 flex items-center gap-2">
           <Tag className="h-4 w-4 text-neutral-500" />
-          Nome da Categoria
+          {t.categoryName}
         </Label>
         <Input
           id="name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="Ex: Alimentação"
+          placeholder={t.namePlaceholder}
           required
           disabled={isLoading}
           className={cn(
@@ -131,7 +132,7 @@ export function CategoryForm({
         <div className="space-y-2">
           <Label className="text-sm font-medium text-neutral-300 flex items-center gap-2">
             <Tag className="h-4 w-4 text-neutral-500" />
-            Ícone
+            {t.icon}
           </Label>
           <IconPicker
             value={formData.icon || 'wallet'}
@@ -144,7 +145,7 @@ export function CategoryForm({
         <div className="space-y-2">
           <Label htmlFor="color" className="text-sm font-medium text-neutral-300 flex items-center gap-2">
             <Palette className="h-4 w-4 text-neutral-500" />
-            Cor
+            {t.color}
           </Label>
           <div className="flex items-center gap-2">
             <Input
@@ -178,11 +179,11 @@ export function CategoryForm({
             size="sm"
             className="sm:h-10 px-4 sm:px-6"
           >
-            Cancelar
+            {tCommon.common.cancel}
           </Button>
         )}
         <Button type="submit" disabled={isLoading || !formData.name.trim()} size="sm" className="sm:h-10 px-4 sm:px-6">
-          {isLoading ? 'Salvando...' : 'Salvar'}
+          {isLoading ? tCommon.common.saving : tCommon.common.save}
         </Button>
       </div>
     </form>

@@ -14,7 +14,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { TransactionWithCategory } from '@/types/transaction'
-import { formatCurrency } from '@/lib/utils/format-currency'
+import { usePreferences } from '@/lib/contexts/preferences-context'
 
 interface MonthlyChartProps {
   transactions: TransactionWithCategory[]
@@ -23,6 +23,8 @@ interface MonthlyChartProps {
 }
 
 export function MonthlyChart({ transactions, startDate, endDate }: MonthlyChartProps) {
+  const { t, formatMoney, localeTag } = usePreferences()
+
   const chartData = useMemo(() => {
     const months: { [key: string]: { receitas: number; despesas: number } } = {}
 
@@ -57,7 +59,7 @@ export function MonthlyChart({ transactions, startDate, endDate }: MonthlyChartP
     return Object.entries(months).map(([key, value]) => {
       const [year, month] = key.split('-')
       const date = new Date(parseInt(year), parseInt(month) - 1, 1)
-      const monthName = date.toLocaleDateString('pt-BR', { month: 'short' })
+      const monthName = date.toLocaleDateString(localeTag, { month: 'short' })
 
       return {
         name: monthName.charAt(0).toUpperCase() + monthName.slice(1),
@@ -65,7 +67,12 @@ export function MonthlyChart({ transactions, startDate, endDate }: MonthlyChartP
         Despesas: value.despesas,
       }
     })
-  }, [transactions, startDate, endDate])
+  }, [transactions, startDate, endDate, localeTag])
+
+  const seriesLabels: Record<string, string> = {
+    Receitas: t.transactionTypes.receita,
+    Despesas: t.transactionTypes.despesa,
+  }
 
   const hasData = chartData.some((data) => data.Receitas > 0 || data.Despesas > 0)
 
@@ -76,7 +83,7 @@ export function MonthlyChart({ transactions, startDate, endDate }: MonthlyChartP
           <div className="rounded-lg bg-blue-500/15 p-1.5">
             <BarChart3 className="h-4 w-4 text-blue-400" />
           </div>
-          <CardTitle className="text-base sm:text-lg">Visão Mensal</CardTitle>
+          <CardTitle className="text-base sm:text-lg">{t.dashboard.monthlyOverview}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="px-2 sm:px-6">
@@ -86,9 +93,9 @@ export function MonthlyChart({ transactions, startDate, endDate }: MonthlyChartP
               <div className="mx-auto mb-3 rounded-full bg-neutral-800/60 p-3 w-fit">
                 <BarChart3 className="h-6 w-6 text-neutral-500" />
               </div>
-              <p className="text-neutral-400 text-sm font-medium">Nenhum dado para exibir</p>
+              <p className="text-neutral-400 text-sm font-medium">{t.dashboard.noDataToShow}</p>
               <p className="text-xs text-neutral-500 mt-1">
-                Adicione transações para visualizar o gráfico
+                {t.dashboard.addTransactionsToViewChart}
               </p>
             </div>
           </div>
@@ -124,9 +131,10 @@ export function MonthlyChart({ transactions, startDate, endDate }: MonthlyChartP
                   }}
                   itemStyle={{ color: '#e5e5e5', padding: '2px 0' }}
                   labelStyle={{ color: '#a3a3a3', fontWeight: 600, marginBottom: '4px' }}
-                  formatter={(value) =>
-                    typeof value === 'number' ? formatCurrency(value) : 'R$ 0,00'
-                  }
+                  formatter={(value, name) => [
+                    typeof value === 'number' ? formatMoney(value) : formatMoney(0),
+                    seriesLabels[name as string] ?? name,
+                  ]}
                   cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }}
                 />
                 <Legend
@@ -134,7 +142,7 @@ export function MonthlyChart({ transactions, startDate, endDate }: MonthlyChartP
                   iconSize={8}
                   wrapperStyle={{ fontSize: '12px', paddingTop: '12px' }}
                   formatter={(value) => (
-                    <span style={{ color: '#a3a3a3' }}>{value}</span>
+                    <span style={{ color: '#a3a3a3' }}>{seriesLabels[value as string] ?? value}</span>
                   )}
                 />
                 <Bar dataKey="Receitas" fill="#34d399" radius={[6, 6, 0, 0]} />

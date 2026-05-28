@@ -42,7 +42,8 @@ import {
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { useFinance } from '@/lib/contexts/finance-context'
-import { formatCurrency } from '@/lib/utils/format-currency'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { transactionsDict } from '@/lib/i18n/sections/transactions'
 import { formatDate } from '@/lib/utils/format-date'
 import { cn } from '@/lib/utils/cn'
 
@@ -59,6 +60,8 @@ export default function TransactionsPage() {
 
   const { openModal, openEditModal } = useTransactionModal()
   const confirm = useConfirm()
+  const { t, locale, formatMoney } = usePreferences()
+  const tx = transactionsDict[locale]
 
   // Import modal
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
@@ -198,11 +201,11 @@ export default function TransactionsPage() {
   const handleDelete = async (id: string) => {
     const transaction = transactions.find((t) => t.id === id)
     const ok = await confirm({
-      title: 'Excluir transação?',
+      title: tx.deleteTitle,
       description: transaction
-        ? `"${transaction.description}" será removida. Esta ação não pode ser desfeita.`
-        : 'Esta ação não pode ser desfeita.',
-      confirmLabel: 'Excluir',
+        ? `"${transaction.description}" ${tx.deleteDescriptionNamed}`
+        : tx.deleteDescription,
+      confirmLabel: t.common.delete,
       variant: 'destructive',
     })
     if (ok) {
@@ -238,22 +241,11 @@ export default function TransactionsPage() {
   ].filter(Boolean).length
 
   const getTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      receita: 'Receita',
-      despesa: 'Despesa',
-      investimento: 'Investimento',
-      transferencia: 'Transferência',
-    }
-    return labels[type] || type
+    return (t.transactionTypes as Record<string, string>)[type] || type
   }
 
   const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      concluida: 'Concluída',
-      pendente: 'Pendente',
-      cancelada: 'Cancelada',
-    }
-    return labels[status] || status
+    return (t.transactionStatus as Record<string, string>)[status] || status
   }
 
   const getCategoryName = (categoryId: string) => {
@@ -277,30 +269,30 @@ export default function TransactionsPage() {
   }
 
   const getTypeBadge = (type: string) => {
-    const variants: Record<string, { bg: string; text: string; label: string }> = {
-      receita: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', label: 'Receita' },
-      despesa: { bg: 'bg-red-500/15', text: 'text-red-400', label: 'Despesa' },
-      investimento: { bg: 'bg-blue-500/15', text: 'text-blue-400', label: 'Investimento' },
-      transferencia: { bg: 'bg-amber-500/15', text: 'text-amber-400', label: 'Transferência' },
+    const variants: Record<string, { bg: string; text: string }> = {
+      receita: { bg: 'bg-emerald-500/15', text: 'text-emerald-400' },
+      despesa: { bg: 'bg-red-500/15', text: 'text-red-400' },
+      investimento: { bg: 'bg-blue-500/15', text: 'text-blue-400' },
+      transferencia: { bg: 'bg-amber-500/15', text: 'text-amber-400' },
     }
     const variant = variants[type] || variants.despesa
     return (
       <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap', variant.bg, variant.text)}>
-        {variant.label}
+        {getTypeLabel(type)}
       </span>
     )
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { bg: string; text: string; label: string }> = {
-      concluida: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', label: 'Concluída' },
-      pendente: { bg: 'bg-amber-500/15', text: 'text-amber-400', label: 'Pendente' },
-      cancelada: { bg: 'bg-neutral-500/15', text: 'text-neutral-400', label: 'Cancelada' },
+    const variants: Record<string, { bg: string; text: string }> = {
+      concluida: { bg: 'bg-emerald-500/15', text: 'text-emerald-400' },
+      pendente: { bg: 'bg-amber-500/15', text: 'text-amber-400' },
+      cancelada: { bg: 'bg-neutral-500/15', text: 'text-neutral-400' },
     }
     const variant = variants[status] || variants.pendente
     return (
       <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap', variant.bg, variant.text)}>
-        {variant.label}
+        {getStatusLabel(status)}
       </span>
     )
   }
@@ -330,20 +322,20 @@ export default function TransactionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Transações</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{tx.title}</h1>
           <p className="text-neutral-400 text-sm mt-1">
-            {filteredAndSortedTransactions.length} transações
-            {hasActiveFilters && ` (filtrado de ${transactions.length})`}
+            {filteredAndSortedTransactions.length} {tx.count}
+            {hasActiveFilters && ` (${tx.filteredFrom} ${transactions.length})`}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setIsImportModalOpen(true)} size="sm" className="sm:h-10 gap-1.5">
             <Upload className="h-4 w-4" />
-            <span className="hidden sm:inline">Importar Extrato</span>
+            <span className="hidden sm:inline">{tx.importStatement}</span>
           </Button>
           <Button onClick={() => openModal()} size="sm" className="sm:h-10 gap-1.5">
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Nova Transação</span>
+            <span className="hidden sm:inline">{tx.newTransaction}</span>
           </Button>
         </div>
       </div>
@@ -351,24 +343,24 @@ export default function TransactionsPage() {
       {/* Summary mini cards */}
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 sm:p-4">
-          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">Receitas</p>
+          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">{tx.income}</p>
           <p className="text-sm sm:text-lg font-bold text-emerald-400 mt-0.5 truncate tabular-nums">
-            {formatCurrency(summary.income)}
+            {formatMoney(summary.income)}
           </p>
         </div>
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 sm:p-4">
-          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">Despesas</p>
+          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">{tx.expenses}</p>
           <p className="text-sm sm:text-lg font-bold text-red-400 mt-0.5 truncate tabular-nums">
-            {formatCurrency(summary.expenses)}
+            {formatMoney(summary.expenses)}
           </p>
         </div>
         <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-3 sm:p-4">
-          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">Saldo</p>
+          <p className="text-[10px] sm:text-xs font-medium text-neutral-400">{tx.balance}</p>
           <p className={cn(
             'text-sm sm:text-lg font-bold mt-0.5 truncate tabular-nums',
             summary.balance >= 0 ? 'text-emerald-400' : 'text-red-400'
           )}>
-            {formatCurrency(summary.balance)}
+            {formatMoney(summary.balance)}
           </p>
         </div>
       </div>
@@ -380,7 +372,7 @@ export default function TransactionsPage() {
       <div className="space-y-2">
         <div className="flex items-center justify-end gap-2">
           <Input
-            placeholder="Buscar transações..."
+            placeholder={tx.searchPlaceholder}
             value={filters.searchQuery}
             onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
             className="w-full max-w-xs h-9"
@@ -392,7 +384,7 @@ export default function TransactionsPage() {
             className="h-9 gap-1.5"
           >
             <Filter className="h-4 w-4" />
-            <span className="hidden sm:inline">Filtrar</span>
+            <span className="hidden sm:inline">{t.common.filter}</span>
             {activeFilterCount > 0 && (
               <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-primary text-primary-foreground">
                 {activeFilterCount}
@@ -432,15 +424,15 @@ export default function TransactionsPage() {
                   filters.startDate && filters.endDate
                     ? `${formatDate(filters.startDate)} - ${formatDate(filters.endDate)}`
                     : filters.startDate
-                    ? `A partir de ${formatDate(filters.startDate)}`
-                    : `Até ${formatDate(filters.endDate)}`
+                    ? `${tx.from} ${formatDate(filters.startDate)}`
+                    : `${tx.until} ${formatDate(filters.endDate)}`
                 }
                 onRemove={() => setFilters({ ...filters, startDate: '', endDate: '' })}
               />
             )}
 
             <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs text-neutral-400">
-              Limpar filtros
+              {tx.clearFilters}
             </Button>
           </div>
         )}
@@ -467,22 +459,22 @@ export default function TransactionsPage() {
           {filteredAndSortedTransactions.length === 0 ? (
             <div className="p-6 sm:p-8">
               <EmptyState
-                title={hasActiveFilters ? 'Nenhuma transação encontrada' : 'Nenhuma transação ainda'}
+                title={hasActiveFilters ? tx.emptyFilteredTitle : tx.emptyTitle}
                 description={
                   hasActiveFilters
-                    ? 'Tente ajustar os filtros para ver mais resultados.'
-                    : 'Comece adicionando sua primeira transação para acompanhar suas finanças.'
+                    ? tx.emptyFilteredDescription
+                    : tx.emptyDescription
                 }
                 icon={<Receipt className="h-12 w-12" />}
                 action={
                   hasActiveFilters ? (
                     <Button variant="outline" onClick={clearFilters}>
-                      Limpar Filtros
+                      {tx.clearFiltersButton}
                     </Button>
                   ) : (
                     <Button onClick={() => openModal()}>
                       <Plus className="h-4 w-4 mr-2" />
-                      Adicionar Transação
+                      {tx.addTransaction}
                     </Button>
                   )
                 }
@@ -498,7 +490,7 @@ export default function TransactionsPage() {
                       onClick={() => handleSort('description')}
                     >
                       <div className="flex items-center gap-1.5 sm:gap-2">
-                        <span className="text-xs sm:text-sm">Descrição</span>
+                        <span className="text-xs sm:text-sm">{tx.colDescription}</span>
                         {getSortIcon('description')}
                       </div>
                     </TableHead>
@@ -507,7 +499,7 @@ export default function TransactionsPage() {
                       onClick={() => handleSort('category')}
                     >
                       <div className="flex items-center gap-1.5 sm:gap-2">
-                        <span className="text-xs sm:text-sm">Categoria</span>
+                        <span className="text-xs sm:text-sm">{tx.colCategory}</span>
                         {getSortIcon('category')}
                       </div>
                     </TableHead>
@@ -516,7 +508,7 @@ export default function TransactionsPage() {
                       onClick={() => handleSort('date')}
                     >
                       <div className="flex items-center gap-1.5 sm:gap-2">
-                        <span className="text-xs sm:text-sm">Data</span>
+                        <span className="text-xs sm:text-sm">{tx.colDate}</span>
                         {getSortIcon('date')}
                       </div>
                     </TableHead>
@@ -525,7 +517,7 @@ export default function TransactionsPage() {
                       onClick={() => handleSort('type')}
                     >
                       <div className="flex items-center gap-1.5 sm:gap-2">
-                        <span className="text-xs sm:text-sm">Tipo</span>
+                        <span className="text-xs sm:text-sm">{tx.colType}</span>
                         {getSortIcon('type')}
                       </div>
                     </TableHead>
@@ -534,7 +526,7 @@ export default function TransactionsPage() {
                       onClick={() => handleSort('status')}
                     >
                       <div className="flex items-center gap-1.5 sm:gap-2">
-                        <span className="text-xs sm:text-sm">Status</span>
+                        <span className="text-xs sm:text-sm">{tx.colStatus}</span>
                         {getSortIcon('status')}
                       </div>
                     </TableHead>
@@ -543,7 +535,7 @@ export default function TransactionsPage() {
                       onClick={() => handleSort('amount')}
                     >
                       <div className="flex items-center justify-end gap-1.5 sm:gap-2">
-                        <span className="text-xs sm:text-sm">Valor</span>
+                        <span className="text-xs sm:text-sm">{tx.colAmount}</span>
                         {getSortIcon('amount')}
                       </div>
                     </TableHead>
@@ -580,7 +572,7 @@ export default function TransactionsPage() {
                                   <span className="truncate">{transaction.category.name}</span>
                                 </>
                               ) : (
-                                'Sem categoria'
+                                tx.noCategory
                               )}
                             </p>
                           </div>
@@ -613,7 +605,7 @@ export default function TransactionsPage() {
                           )}
                         >
                           {transaction.type === 'receita' ? '+' : '-'}
-                          {formatCurrency(transaction.amount)}
+                          {formatMoney(transaction.amount)}
                         </span>
                       </TableCell>
                       <TableCell className="px-2 sm:px-4">
@@ -626,12 +618,12 @@ export default function TransactionsPage() {
                         >
                           <DropdownMenuItem onClick={() => openEditModal(transaction)}>
                             <Pencil className="h-4 w-4" />
-                            Editar
+                            {t.common.edit}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem destructive onClick={() => handleDelete(transaction.id)}>
                             <Trash2 className="h-4 w-4" />
-                            Excluir
+                            {t.common.delete}
                           </DropdownMenuItem>
                         </DropdownMenu>
                       </TableCell>

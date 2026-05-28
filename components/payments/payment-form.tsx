@@ -7,6 +7,8 @@ import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { CategorySelect } from '@/components/ui/category-select'
 import { useFinance } from '@/lib/contexts/finance-context'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { paymentsDict } from '@/lib/i18n/sections/payments'
 import { useCategoryModal } from '@/components/categories/category-modal'
 import { CategoryType } from '@/types/category'
 import { cn } from '@/lib/utils/cn'
@@ -23,53 +25,62 @@ import {
   Hash,
 } from 'lucide-react'
 
-const RECURRENCE_OPTIONS = [
-  { value: 'unica', label: 'Uma vez' },
-  { value: 'mensal', label: 'Mensal' },
-  { value: 'semanal', label: 'Semanal' },
-  { value: 'anual', label: 'Anual' },
-] as const
+type PaymentsText = { [K in keyof (typeof paymentsDict)['pt']]: string }
 
-type Recurrence = (typeof RECURRENCE_OPTIONS)[number]['value']
+const RECURRENCE_VALUES = ['unica', 'mensal', 'semanal', 'anual'] as const
 
-export const paymentFormSchema = z
-  .object({
-    type: z.enum(['despesa', 'transferencia', 'investimento']),
-    description: z
-      .string()
-      .min(3, 'Descrição deve ter no mínimo 3 caracteres')
-      .max(255, 'Descrição deve ter no máximo 255 caracteres'),
-    amount: z
-      .number({ message: 'Informe um valor' })
-      .positive('Valor deve ser positivo'),
-    due_date: z.string().min(1, 'Data de vencimento é obrigatória'),
-    category_id: z.string().optional(),
-    notes: z.string().optional(),
-    recurrence: z.enum(['unica', 'mensal', 'semanal', 'anual']),
-    duration: z.enum(['fixed', 'infinite']),
-    occurrences: z
-      .number({ message: 'Informe a quantidade' })
-      .int()
-      .min(1, 'Mínimo 1')
-      .max(360, 'Máximo 360'),
-  })
-  .refine(
-    (data) =>
-      data.recurrence === 'unica' ||
-      data.duration === 'infinite' ||
-      data.occurrences >= 1,
-    {
-      path: ['occurrences'],
-      message: 'Informe a quantidade',
-    }
-  )
+type Recurrence = (typeof RECURRENCE_VALUES)[number]
+
+const RECURRENCE_LABEL_KEYS: Record<Recurrence, keyof PaymentsText> = {
+  unica: 'recurrenceOnce',
+  mensal: 'recurrenceMonthly',
+  semanal: 'recurrenceWeekly',
+  anual: 'recurrenceYearly',
+}
+
+// Schema factory so validation messages can be localized. The exported
+// `PaymentFormData` type is inferred from a default (pt) instance.
+function makePaymentFormSchema(t: PaymentsText) {
+  return z
+    .object({
+      type: z.enum(['despesa', 'transferencia', 'investimento']),
+      description: z
+        .string()
+        .min(3, t.descriptionMin)
+        .max(255, t.descriptionMax),
+      amount: z
+        .number({ message: t.amountRequired })
+        .positive(t.amountPositive),
+      due_date: z.string().min(1, t.dueDateRequired),
+      category_id: z.string().optional(),
+      notes: z.string().optional(),
+      recurrence: z.enum(['unica', 'mensal', 'semanal', 'anual']),
+      duration: z.enum(['fixed', 'infinite']),
+      occurrences: z
+        .number({ message: t.quantityRequired })
+        .int()
+        .min(1, t.quantityMin)
+        .max(360, t.quantityMax),
+    })
+    .refine(
+      (data) =>
+        data.recurrence === 'unica' ||
+        data.duration === 'infinite' ||
+        data.occurrences >= 1,
+      {
+        path: ['occurrences'],
+        message: t.quantityRequired,
+      }
+    )
+}
+
+export const paymentFormSchema = makePaymentFormSchema(paymentsDict.pt)
 
 export type PaymentFormData = z.infer<typeof paymentFormSchema>
 
 const typeOptions = [
   {
     value: 'despesa' as const,
-    label: 'Despesa',
     icon: ArrowUpRight,
     color: 'text-red-500',
     bgColor: 'bg-red-500/10',
@@ -77,7 +88,6 @@ const typeOptions = [
   },
   {
     value: 'transferencia' as const,
-    label: 'Transferência',
     icon: ArrowLeftRight,
     color: 'text-yellow-500',
     bgColor: 'bg-yellow-500/10',
@@ -85,7 +95,6 @@ const typeOptions = [
   },
   {
     value: 'investimento' as const,
-    label: 'Investimento',
     icon: LineChart,
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',
@@ -112,6 +121,8 @@ export function PaymentForm({
 }: PaymentFormProps) {
   const { categories } = useFinance()
   const { openModal: openCategoryModal } = useCategoryModal()
+  const { locale, t: tCommon } = usePreferences()
+  const t = paymentsDict[locale]
 
   const {
     register,
@@ -121,7 +132,7 @@ export function PaymentForm({
     control,
     formState: { errors },
   } = useForm<PaymentFormData>({
-    resolver: zodResolver(paymentFormSchema),
+    resolver: zodResolver(makePaymentFormSchema(t)),
     defaultValues: {
       type: 'despesa',
       due_date: new Date().toISOString().slice(0, 10),
@@ -167,12 +178,13 @@ export function PaymentForm({
       <div className="space-y-2">
         <label className="text-sm font-medium text-neutral-300 flex items-center gap-2">
           <Tag className="h-4 w-4 text-neutral-500" />
-          Tipo
+          {t.type}
         </label>
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
           {typeOptions.map((option) => {
             const Icon = option.icon
             const isSelected = paymentType === option.value
+            const label = tCommon.transactionTypes[option.value]
             return (
               <button
                 key={option.value}
@@ -199,7 +211,7 @@ export function PaymentForm({
                     isSelected ? option.color : 'text-neutral-300'
                   )}
                 >
-                  {option.label}
+                  {label}
                 </span>
               </button>
             )
@@ -213,11 +225,11 @@ export function PaymentForm({
           className="text-sm font-medium text-neutral-300 flex items-center gap-2"
         >
           <FileText className="h-4 w-4 text-neutral-500" />
-          Descrição
+          {t.description}
         </label>
         <input
           id="description"
-          placeholder="Ex: Aluguel, Internet, Netflix"
+          placeholder={t.descriptionPlaceholder}
           {...register('description')}
           disabled={isLoading}
           className={cn(
@@ -241,7 +253,7 @@ export function PaymentForm({
             className="text-sm font-medium text-neutral-300 flex items-center gap-2"
           >
             <DollarSign className="h-4 w-4 text-neutral-500" />
-            Valor
+            {t.amount}
           </label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm font-medium">
@@ -271,7 +283,7 @@ export function PaymentForm({
                     id="amount"
                     type="text"
                     inputMode="numeric"
-                    placeholder="0,00"
+                    placeholder={t.amountPlaceholder}
                     value={formatCurrency(field.value)}
                     onChange={handleChange}
                     disabled={isLoading}
@@ -299,7 +311,7 @@ export function PaymentForm({
             className="text-sm font-medium text-neutral-300 flex items-center gap-2"
           >
             <Calendar className="h-4 w-4 text-neutral-500" />
-            Vencimento
+            {t.dueDate}
           </label>
           <input
             id="due_date"
@@ -325,7 +337,7 @@ export function PaymentForm({
       <div className="space-y-2">
         <label className="text-sm font-medium text-neutral-300 flex items-center gap-2">
           <Tag className="h-4 w-4 text-neutral-500" />
-          Categoria
+          {t.category}
         </label>
         <Controller
           name="category_id"
@@ -335,7 +347,7 @@ export function PaymentForm({
               value={field.value || ''}
               onChange={field.onChange}
               categories={filteredCategories}
-              placeholder="Selecione"
+              placeholder={t.categoryPlaceholder}
               disabled={isLoading}
               onCreateNew={() =>
                 openCategoryModal(
@@ -353,16 +365,16 @@ export function PaymentForm({
         <div className="space-y-3 rounded-lg border border-neutral-800 bg-neutral-900/50 p-3">
           <label className="text-sm font-medium text-neutral-300 flex items-center gap-2">
             <Repeat className="h-4 w-4 text-neutral-500" />
-            Recorrência
+            {t.recurrence}
           </label>
           <div className="grid grid-cols-4 gap-1.5">
-            {RECURRENCE_OPTIONS.map((opt) => {
-              const isSelected = recurrence === opt.value
+            {RECURRENCE_VALUES.map((value) => {
+              const isSelected = recurrence === value
               return (
                 <button
-                  key={opt.value}
+                  key={value}
                   type="button"
-                  onClick={() => setValue('recurrence', opt.value as Recurrence)}
+                  onClick={() => setValue('recurrence', value as Recurrence)}
                   disabled={isLoading}
                   className={cn(
                     'py-2 px-1 text-xs font-medium rounded-md border transition-colors',
@@ -371,7 +383,7 @@ export function PaymentForm({
                       : 'bg-neutral-900 border-neutral-700 text-neutral-300 hover:bg-neutral-800'
                   )}
                 >
-                  {opt.label}
+                  {t[RECURRENCE_LABEL_KEYS[value]]}
                 </button>
               )
             })}
@@ -392,7 +404,7 @@ export function PaymentForm({
                   )}
                 >
                   <Hash className="h-3.5 w-3.5" />
-                  Quantidade fixa
+                  {t.fixedQuantity}
                 </button>
                 <button
                   type="button"
@@ -406,7 +418,7 @@ export function PaymentForm({
                   )}
                 >
                   <InfinityIcon className="h-3.5 w-3.5" />
-                  Indefinida
+                  {t.indefinite}
                 </button>
               </div>
 
@@ -416,7 +428,7 @@ export function PaymentForm({
                     htmlFor="occurrences"
                     className="text-xs text-neutral-400 flex-shrink-0"
                   >
-                    Ocorrências
+                    {t.occurrencesLabel}
                   </label>
                   <input
                     id="occurrences"
@@ -430,9 +442,7 @@ export function PaymentForm({
                 </div>
               ) : (
                 <p className="text-[11px] text-purple-300/80 leading-relaxed">
-                  Serão geradas várias ocorrências futuras automaticamente
-                  (5 anos para mensal, 2 anos para semanal, 30 anos para anual).
-                  Você poderá excluir a série a qualquer momento.
+                  {t.indefiniteHint}
                 </p>
               )}
             </div>
@@ -450,14 +460,14 @@ export function PaymentForm({
           className="text-sm font-medium text-neutral-300 flex items-center gap-2"
         >
           <FileText className="h-4 w-4 text-neutral-500" />
-          Observações
-          <span className="text-neutral-500 font-normal text-xs">(opcional)</span>
+          {t.notes}
+          <span className="text-neutral-500 font-normal text-xs">{t.notesOptional}</span>
         </label>
         <textarea
           id="notes"
           {...register('notes')}
           rows={2}
-          placeholder="Detalhes adicionais..."
+          placeholder={t.notesPlaceholder}
           disabled={isLoading}
           className="flex w-full min-h-[60px] rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 resize-none"
         />
@@ -474,7 +484,7 @@ export function PaymentForm({
               size="sm"
               className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
             >
-              Excluir
+              {tCommon.common.delete}
             </Button>
           )}
         </div>
@@ -487,11 +497,11 @@ export function PaymentForm({
               disabled={isLoading}
               size="sm"
             >
-              Cancelar
+              {tCommon.common.cancel}
             </Button>
           )}
           <Button type="submit" disabled={isLoading} size="sm">
-            {isLoading ? 'Salvando...' : 'Salvar'}
+            {isLoading ? tCommon.common.saving : tCommon.common.save}
           </Button>
         </div>
       </div>

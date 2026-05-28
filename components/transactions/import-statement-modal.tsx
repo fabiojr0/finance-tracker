@@ -20,7 +20,8 @@ import { toast } from 'sonner'
 import { Modal, ModalHeader, ModalContent } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { useFinance } from '@/lib/contexts/finance-context'
-import { formatCurrency } from '@/lib/utils/format-currency'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { transactionsDict } from '@/lib/i18n/sections/transactions'
 import { importedTransactionSchema } from '@/lib/utils/validation'
 import { TransactionType } from '@/types/transaction'
 import { cn } from '@/lib/utils/cn'
@@ -52,18 +53,13 @@ interface ImportStatementModalProps {
 }
 
 const TYPE_OPTIONS = [
-  { value: 'despesa', label: 'Despesa', icon: ArrowUpRight, color: 'text-red-400' },
-  { value: 'receita', label: 'Receita', icon: ArrowDownLeft, color: 'text-emerald-400' },
-  { value: 'investimento', label: 'Investimento', icon: LineChart, color: 'text-blue-400' },
-  { value: 'transferencia', label: 'Transferência', icon: ArrowLeftRight, color: 'text-amber-400' },
+  { value: 'despesa', icon: ArrowUpRight, color: 'text-red-400' },
+  { value: 'receita', icon: ArrowDownLeft, color: 'text-emerald-400' },
+  { value: 'investimento', icon: LineChart, color: 'text-blue-400' },
+  { value: 'transferencia', icon: ArrowLeftRight, color: 'text-amber-400' },
 ] as const
 
-const NAME_STYLE_OPTIONS: { value: NameStyle; label: string; hint: string }[] = [
-  { value: 'padrao', label: 'Padrão', hint: 'Primeiro + último nome (ex: João Silva)' },
-  { value: 'curto', label: 'Curto', hint: 'Apenas primeiro nome (ex: João)' },
-  { value: 'extenso', label: 'Extenso', hint: 'Nome completo abreviado quando longo' },
-  { value: 'completo', label: 'Completo', hint: 'Nome completo como no extrato' },
-]
+const NAME_STYLE_VALUES: NameStyle[] = ['padrao', 'curto', 'extenso', 'completo']
 
 const SETTINGS_STORAGE_KEY = 'finance-tracker:import-statement-settings'
 
@@ -83,7 +79,7 @@ function loadSettings(): ImportSettings {
     return {
       customPrompt: typeof parsed.customPrompt === 'string' ? parsed.customPrompt : '',
       ignoreWords: typeof parsed.ignoreWords === 'string' ? parsed.ignoreWords : '',
-      nameStyle: NAME_STYLE_OPTIONS.some((o) => o.value === parsed.nameStyle)
+      nameStyle: NAME_STYLE_VALUES.includes(parsed.nameStyle as NameStyle)
         ? (parsed.nameStyle as NameStyle)
         : 'padrao',
       usePreviousMonthExamples:
@@ -98,6 +94,20 @@ function loadSettings(): ImportSettings {
 
 export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalProps) {
   const { categories, transactions: pastTransactions, bulkCreateTransactions, refetchTransactions } = useFinance()
+  const { t, locale, formatMoney } = usePreferences()
+  const tx = transactionsDict[locale]
+
+  const nameStyleOptions: { value: NameStyle; label: string; hint: string }[] = [
+    { value: 'padrao', label: tx.nameStylePadrao, hint: tx.nameStylePadraoHint },
+    { value: 'curto', label: tx.nameStyleCurto, hint: tx.nameStyleCurtoHint },
+    { value: 'extenso', label: tx.nameStyleExtenso, hint: tx.nameStyleExtensoHint },
+    { value: 'completo', label: tx.nameStyleCompleto, hint: tx.nameStyleCompletoHint },
+  ]
+
+  // Resolved here (outside the review-table map, where `t` is shadowed by the
+  // transaction iteration variable) so type labels still use the dictionary.
+  const typeLabel = (type: string) =>
+    (t.transactionTypes as Record<string, string>)[type] || type
 
   const [step, setStep] = useState<Step>('upload')
   const [file, setFile] = useState<File | null>(null)
@@ -195,7 +205,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
     })
 
     const data = await response.json()
-    if (!response.ok) throw new Error(data.error || 'Erro ao analisar extrato')
+    if (!response.ok) throw new Error(data.error || tx.errorParsingStatement)
 
     const validTransactions: ImportedTransaction[] = []
     for (const t of data.transactions) {
@@ -209,7 +219,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
     }
 
     if (validTransactions.length === 0) {
-      throw new Error('Nenhuma transação válida encontrada no extrato.')
+      throw new Error(tx.noValidTransactions)
     }
 
     // Filter out transactions with external_id that already exist in the database
@@ -231,7 +241,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
         )
 
         if (filtered.length === 0) {
-          throw new Error('Todas as transações do extrato já foram importadas anteriormente.')
+          throw new Error(tx.allAlreadyImported)
         }
 
         return filtered
@@ -239,7 +249,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
     }
 
     return validTransactions
-  }, [categories, pastTransactions, settings])
+  }, [categories, pastTransactions, settings, tx])
 
   const processFile = useCallback(async (selectedFile: File) => {
     setFile(selectedFile)
@@ -248,7 +258,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
 
     try {
       // Step 1: Extrair texto via API server-side (pdf-parse)
-      setStatusText('Extraindo texto do arquivo...')
+      setStatusText(tx.extractingText)
 
       const formData = new FormData()
       formData.append('file', selectedFile)
@@ -259,13 +269,13 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
       })
 
       const parseData = await parseResponse.json()
-      if (!parseResponse.ok) throw new Error(parseData.error || 'Erro ao extrair texto')
+      if (!parseResponse.ok) throw new Error(parseData.error || tx.errorExtractingText)
 
       const text = parseData.text as string
       setExtractedText(text)
 
       // Step 2: Analisar com IA
-      setStatusText('Analisando transações com IA...')
+      setStatusText(tx.analyzingWithAI)
 
       const validTransactions = await callAI(text)
       setTransactions(validTransactions)
@@ -275,10 +285,10 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
         setStep('upload')
         return
       }
-      setError(err instanceof Error ? err.message : 'Erro desconhecido')
+      setError(err instanceof Error ? err.message : tx.unknownError)
       setStep('error')
     }
-  }, [callAI])
+  }, [callAI, tx])
 
   const handleRetry = useCallback(async () => {
     if (!extractedText) {
@@ -288,7 +298,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
 
     setStep('processing')
     setError(null)
-    setStatusText('Analisando transações com IA...')
+    setStatusText(tx.analyzingWithAI)
 
     try {
       const validTransactions = await callAI(extractedText)
@@ -299,35 +309,47 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
         setStep('upload')
         return
       }
-      setError(err instanceof Error ? err.message : 'Erro desconhecido')
+      setError(err instanceof Error ? err.message : tx.unknownError)
       setStep('error')
     }
-  }, [extractedText, callAI, reset])
+  }, [extractedText, callAI, reset, tx])
+
+  const checkFile = useCallback(
+    (candidate: File): boolean => {
+      const result = validateFile(candidate)
+      if (!result.valid) {
+        alert(result.reason === 'format' ? tx.invalidFormat : tx.fileTooLarge)
+        return false
+      }
+      return true
+    },
+    [tx]
+  )
 
   const handleFileDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
       setIsDragging(false)
       const droppedFile = e.dataTransfer.files[0]
-      if (droppedFile && isValidFile(droppedFile)) {
+      if (droppedFile && checkFile(droppedFile)) {
         setFile(droppedFile)
         setError(null)
       }
     },
-    []
+    [checkFile]
   )
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const selectedFile = e.target.files?.[0]
-      if (selectedFile && isValidFile(selectedFile)) {
+      if (selectedFile && checkFile(selectedFile)) {
         setFile(selectedFile)
         setError(null)
       }
       // Allow re-selecting the same file later
       e.target.value = ''
     },
-    []
+    [checkFile]
   )
 
   const handleContinue = useCallback(() => {
@@ -372,7 +394,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
     const { error } = await bulkCreateTransactions(inputs)
 
     if (error) {
-      toast.error('Erro ao importar transações', {
+      toast.error(tx.importError, {
         description: error,
       })
       setError(error)
@@ -383,13 +405,13 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
     await refetchTransactions()
     toast.success(
       count === 1
-        ? '1 transação importada'
-        : `${count} transações importadas`,
-      { description: 'O extrato foi processado com sucesso.' }
+        ? tx.importSuccessSingular
+        : `${count} ${tx.importSuccessPlural}`,
+      { description: tx.importSuccessDescription }
     )
     reset()
     onClose()
-  }, [transactions, bulkCreateTransactions, refetchTransactions, reset, onClose])
+  }, [transactions, bulkCreateTransactions, refetchTransactions, reset, onClose, tx])
 
   const handleCancel = useCallback(() => {
     if (abortControllerRef.current) {
@@ -410,7 +432,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
   return (
     <Modal isOpen={isOpen} onClose={handleClose} className="sm:max-w-4xl">
       <ModalHeader onClose={handleClose}>
-        Importar Extrato Bancário
+        {tx.importTitle}
       </ModalHeader>
       <ModalContent>
         {/* ── UPLOAD ── */}
@@ -447,17 +469,17 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                   )} />
                 </div>
                 <p className="text-base font-medium text-neutral-200 mb-1.5">
-                  {isDragging ? 'Solte o arquivo aqui' : 'Arraste seu extrato aqui'}
+                  {isDragging ? tx.dropFileHere : tx.dragFileHere}
                 </p>
                 <p className="text-sm text-neutral-500 mb-4">
-                  ou clique para selecionar
+                  {tx.clickToSelect}
                 </p>
                 <div className="flex items-center gap-3">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-400">
                     <FileText className="h-3 w-3" />
                     CSV
                   </span>
-                  <span className="text-xs text-neutral-600">máx. 10MB</span>
+                  <span className="text-xs text-neutral-600">{tx.maxSize}</span>
                 </div>
               </div>
             ) : (
@@ -480,7 +502,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                     {file.name}
                   </p>
                   <p className="text-xs text-neutral-500 mt-0.5">
-                    {formatFileSize(file.size)} · pronto para importar
+                    {formatFileSize(file.size)} · {tx.readyToImport}
                   </p>
                 </div>
                 <button
@@ -488,13 +510,13 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                   onClick={() => fileInputRef.current?.click()}
                   className="text-xs text-neutral-400 hover:text-neutral-200 px-2 py-1 rounded-md hover:bg-neutral-800 transition-colors"
                 >
-                  Trocar
+                  {tx.changeFile}
                 </button>
                 <button
                   type="button"
                   onClick={handleClearFile}
                   className="p-1.5 rounded-md text-neutral-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                  aria-label="Remover arquivo"
+                  aria-label={tx.removeFile}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -514,10 +536,10 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                   </div>
                   <div>
                     <p className="text-sm font-medium text-neutral-200">
-                      Configurações de importação
+                      {tx.importSettings}
                     </p>
                     <p className="text-xs text-neutral-500">
-                      Personalize como a IA processa o extrato
+                      {tx.importSettingsHint}
                     </p>
                   </div>
                 </div>
@@ -553,12 +575,12 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-neutral-200">
-                        Usar transações do mês anterior como exemplos
+                        {tx.usePreviousMonthExamples}
                       </p>
                       <p className="text-[11px] text-neutral-500 mt-0.5 leading-tight">
                         {previousMonthExamplesCount > 0
-                          ? `${previousMonthExamplesCount} ${previousMonthExamplesCount === 1 ? 'transação encontrada' : 'transações encontradas'} para guiar a IA na escolha de categorias e nomes.`
-                          : 'Nenhuma transação do mês anterior disponível.'}
+                          ? `${previousMonthExamplesCount} ${previousMonthExamplesCount === 1 ? tx.exampleFoundSingular : tx.exampleFoundPlural} ${tx.examplesHintSuffix}`
+                          : tx.noPreviousMonthExamples}
                       </p>
                     </div>
                   </label>
@@ -566,10 +588,10 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                   {/* Name style */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-neutral-300">
-                      Estilo do nome em transferências
+                      {tx.nameStyleLabel}
                     </label>
                     <div className="grid grid-cols-2 gap-2">
-                      {NAME_STYLE_OPTIONS.map((opt) => (
+                      {nameStyleOptions.map((opt) => (
                         <button
                           key={opt.value}
                           type="button"
@@ -601,18 +623,18 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                       htmlFor="import-ignore-words"
                       className="text-xs font-medium text-neutral-300"
                     >
-                      Palavras a ignorar
+                      {tx.ignoreWordsLabel}
                     </label>
                     <input
                       id="import-ignore-words"
                       type="text"
                       value={settings.ignoreWords}
                       onChange={(e) => updateSettings({ ignoreWords: e.target.value })}
-                      placeholder="ex: saldo anterior, rendimento, IOF"
+                      placeholder={tx.ignoreWordsPlaceholder}
                       className="w-full h-10 rounded-md border border-neutral-800 bg-neutral-900 px-3 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                     />
                     <p className="text-[11px] text-neutral-500">
-                      Separe por vírgula. Transações que contenham essas palavras serão descartadas.
+                      {tx.ignoreWordsHint}
                     </p>
                   </div>
 
@@ -622,31 +644,31 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                       htmlFor="import-custom-prompt"
                       className="text-xs font-medium text-neutral-300"
                     >
-                      Instruções adicionais para a IA
+                      {tx.customPromptLabel}
                     </label>
                     <textarea
                       id="import-custom-prompt"
                       value={settings.customPrompt}
                       onChange={(e) => updateSettings({ customPrompt: e.target.value })}
                       rows={3}
-                      placeholder='ex: "Toda transação contendo Uber deve virar despesa de transporte", "Aplicações em CDB são investimentos"'
+                      placeholder={tx.customPromptPlaceholder}
                       className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-y"
                     />
                     <p className="text-[11px] text-neutral-500">
-                      Essas instruções são adicionadas ao prompt enviado à IA.
+                      {tx.customPromptHint}
                     </p>
                   </div>
 
                   <div className="flex items-center justify-between pt-1">
                     <p className="text-[11px] text-neutral-600">
-                      As preferências ficam salvas neste navegador.
+                      {tx.settingsSavedInBrowser}
                     </p>
                     <button
                       type="button"
                       onClick={resetSettings}
                       className="text-[11px] text-neutral-400 hover:text-neutral-200 underline-offset-2 hover:underline"
                     >
-                      Restaurar padrões
+                      {tx.restoreDefaults}
                     </button>
                   </div>
                 </div>
@@ -656,7 +678,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
             {/* Footer actions */}
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-neutral-800">
               <Button variant="ghost" size="sm" onClick={handleClose} className="px-4">
-                Cancelar
+                {t.common.cancel}
               </Button>
               <Button
                 size="sm"
@@ -664,7 +686,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                 disabled={!file}
                 className="px-6 gap-1.5"
               >
-                Continuar
+                {tx.continue}
               </Button>
             </div>
           </div>
@@ -686,7 +708,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                   {file.name}
                 </p>
               )}
-              <p className="text-xs text-neutral-600">Isso pode levar alguns minutos</p>
+              <p className="text-xs text-neutral-600">{tx.processingMayTakeMinutes}</p>
             </div>
             <Button
               variant="ghost"
@@ -694,7 +716,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
               onClick={handleCancel}
               className="mt-1 text-neutral-400 hover:text-neutral-200"
             >
-              Cancelar
+              {t.common.cancel}
             </Button>
           </div>
         )}
@@ -706,15 +728,15 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
               <AlertCircle className="h-8 w-8 text-red-400" />
             </div>
             <div className="text-center space-y-1.5 max-w-sm">
-              <p className="text-base font-medium text-neutral-200">Erro ao processar extrato</p>
+              <p className="text-base font-medium text-neutral-200">{tx.errorTitle}</p>
               <p className="text-sm text-neutral-400">{error}</p>
             </div>
             <div className="flex gap-3 mt-1">
               <Button variant="outline" size="sm" onClick={handleRetry} className="gap-1.5">
-                Tentar Novamente
+                {t.common.tryAgain}
               </Button>
               <Button variant="ghost" size="sm" onClick={reset}>
-                Voltar
+                {t.common.back}
               </Button>
             </div>
           </div>
@@ -726,21 +748,21 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
             {/* Summary bar */}
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-3">
-                <p className="text-[10px] sm:text-xs font-medium text-neutral-500">Encontradas</p>
+                <p className="text-[10px] sm:text-xs font-medium text-neutral-500">{tx.reviewFound}</p>
                 <p className="text-base sm:text-lg font-bold text-white mt-0.5 tabular-nums">
                   {transactions.length}
                 </p>
               </div>
               <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
-                <p className="text-[10px] sm:text-xs font-medium text-neutral-500">Receitas</p>
+                <p className="text-[10px] sm:text-xs font-medium text-neutral-500">{tx.income}</p>
                 <p className="text-base sm:text-lg font-bold text-emerald-400 mt-0.5 truncate tabular-nums">
-                  {formatCurrency(summary.income)}
+                  {formatMoney(summary.income)}
                 </p>
               </div>
               <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3">
-                <p className="text-[10px] sm:text-xs font-medium text-neutral-500">Despesas</p>
+                <p className="text-[10px] sm:text-xs font-medium text-neutral-500">{tx.expenses}</p>
                 <p className="text-base sm:text-lg font-bold text-red-400 mt-0.5 truncate tabular-nums">
-                  {formatCurrency(summary.expenses)}
+                  {formatMoney(summary.expenses)}
                 </p>
               </div>
             </div>
@@ -752,19 +774,19 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                   <thead className="bg-neutral-900/80 sticky top-0 z-10">
                     <tr className="border-b border-neutral-800">
                       <th className="text-left px-3 py-2.5 text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                        Descrição
+                        {tx.colDescription}
                       </th>
                       <th className="text-left px-3 py-2.5 text-xs font-medium text-neutral-500 uppercase tracking-wider w-[120px] hidden sm:table-cell">
-                        Data
+                        {tx.colDate}
                       </th>
                       <th className="text-left px-3 py-2.5 text-xs font-medium text-neutral-500 uppercase tracking-wider w-[130px] hidden md:table-cell">
-                        Tipo
+                        {tx.colType}
                       </th>
                       <th className="text-left px-3 py-2.5 text-xs font-medium text-neutral-500 uppercase tracking-wider w-[150px] hidden lg:table-cell">
-                        Categoria
+                        {tx.colCategory}
                       </th>
                       <th className="text-right px-3 py-2.5 text-xs font-medium text-neutral-500 uppercase tracking-wider w-[110px]">
-                        Valor
+                        {tx.colAmount}
                       </th>
                       <th className="px-2 py-2.5 w-[40px]"></th>
                     </tr>
@@ -798,7 +820,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                             {/* Mobile: show date + type below */}
                             <div className="flex items-center gap-2 mt-1 sm:hidden">
                               <span className="text-xs text-neutral-500">{t.date}</span>
-                              <span className={cn('text-xs', typeOption?.color)}>{typeOption?.label}</span>
+                              <span className={cn('text-xs', typeOption?.color)}>{typeLabel(t.type)}</span>
                             </div>
                           </td>
 
@@ -821,7 +843,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                             >
                               {TYPE_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
-                                  {opt.label}
+                                  {typeLabel(opt.value)}
                                 </option>
                               ))}
                             </select>
@@ -834,7 +856,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                               onChange={(e) => updateTransaction(i, 'category_id', e.target.value)}
                               className="w-full h-8 rounded-md border border-neutral-700 bg-neutral-800 px-2 text-xs text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary"
                             >
-                              <option value="">Sem categoria</option>
+                              <option value="">{tx.noCategory}</option>
                               {categories
                                 .filter((c) => c.type === t.type)
                                 .map((c) => (
@@ -854,7 +876,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                               'text-red-400'
                             )}>
                               {t.type === 'receita' ? '+' : '-'}
-                              {formatCurrency(t.amount)}
+                              {formatMoney(t.amount)}
                             </span>
                           </td>
 
@@ -882,7 +904,7 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
               </p>
               <div className="flex gap-3">
                 <Button variant="ghost" size="sm" onClick={handleClose} className="px-4">
-                  Cancelar
+                  {t.common.cancel}
                 </Button>
                 <Button
                   size="sm"
@@ -891,7 +913,8 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
                   className="px-4 sm:px-6 gap-1.5"
                 >
                   <Upload className="h-4 w-4" />
-                  Importar {transactions.length} transações
+                  {tx.importAction} {transactions.length}{' '}
+                  {transactions.length === 1 ? tx.importButtonSingular : tx.importButtonPlural}
                 </Button>
               </div>
             </div>
@@ -906,10 +929,12 @@ export function ImportStatementModal({ isOpen, onClose }: ImportStatementModalPr
             </div>
             <div className="text-center space-y-1.5">
               <p className="text-base font-medium text-neutral-200">
-                Importando transações...
+                {tx.importingTitle}
               </p>
               <p className="text-sm text-neutral-500">
-                {transactions.length} transações sendo criadas
+                {transactions.length === 1
+                  ? tx.importingSingular
+                  : `${transactions.length} ${tx.importingPlural}`}
               </p>
             </div>
             <div className="w-full max-w-xs">
@@ -975,20 +1000,20 @@ function buildPreviousMonthExamples(transactions: PastTransactionLike[]) {
   return examples
 }
 
-function isValidFile(file: File): boolean {
+type FileValidationResult = { valid: true } | { valid: false; reason: 'format' | 'size' }
+
+function validateFile(file: File): FileValidationResult {
   const maxSize = 10 * 1024 * 1024
 
   const hasValidExtension = file.name.toLowerCase().endsWith('.csv')
 
   if (!hasValidExtension) {
-    alert('Formato inválido. Use CSV.')
-    return false
+    return { valid: false, reason: 'format' }
   }
 
   if (file.size > maxSize) {
-    alert('Arquivo muito grande. O limite é 10MB.')
-    return false
+    return { valid: false, reason: 'size' }
   }
 
-  return true
+  return { valid: true }
 }

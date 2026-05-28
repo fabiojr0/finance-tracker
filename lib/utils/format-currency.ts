@@ -1,8 +1,24 @@
+export type AppLocale = 'pt' | 'en' | 'es'
+
+// Maps the app language to the Intl/BCP-47 locale tag used for number, date
+// and currency formatting.
+export const LOCALE_TAG: Record<AppLocale, string> = {
+  pt: 'pt-BR',
+  en: 'en-US',
+  es: 'es-ES',
+}
+
+export function localeTag(locale: AppLocale = 'pt'): string {
+  return LOCALE_TAG[locale] ?? 'pt-BR'
+}
+
 export function formatCurrency(
   amount: number,
-  currency: string = 'BRL'
+  currency: string = 'BRL',
+  locale: AppLocale | string = 'pt-BR'
 ): string {
-  return new Intl.NumberFormat('pt-BR', {
+  const tag = locale in LOCALE_TAG ? LOCALE_TAG[locale as AppLocale] : locale
+  return new Intl.NumberFormat(tag, {
     style: 'currency',
     currency: currency,
   }).format(amount)

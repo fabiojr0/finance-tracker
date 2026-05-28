@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom'
 import { ChevronDown, Check, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { CategoryIcon } from '@/components/shared/category-icon'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { categoriesDict } from '@/lib/i18n/sections/categories'
 
 interface Category {
   id: string
@@ -27,11 +29,14 @@ export function CategorySelect({
   value,
   onChange,
   categories,
-  placeholder = 'Selecione uma categoria',
+  placeholder,
   disabled,
   error,
   onCreateNew,
 }: CategorySelectProps) {
+  const { locale } = usePreferences()
+  const t = categoriesDict[locale]
+  const resolvedPlaceholder = placeholder ?? t.selectPlaceholder
   const [isOpen, setIsOpen] = React.useState(false)
   const [position, setPosition] = React.useState({ top: 0, left: 0, width: 0 })
   const triggerRef = React.useRef<HTMLButtonElement>(null)
@@ -104,7 +109,7 @@ export function CategorySelect({
             <span className="text-neutral-200">{selectedCategory.name}</span>
           </div>
         ) : (
-          <span className="text-neutral-500">{placeholder}</span>
+          <span className="text-neutral-500">{resolvedPlaceholder}</span>
         )}
         <ChevronDown
           className={cn(
@@ -129,7 +134,7 @@ export function CategorySelect({
           >
             {categories.length === 0 ? (
               <div className="px-3 py-2 text-sm text-neutral-500">
-                Nenhuma categoria disponível
+                {t.noCategoriesAvailable}
               </div>
             ) : (
               categories.map((category) => (
@@ -165,7 +170,7 @@ export function CategorySelect({
                   className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none text-primary"
                 >
                   <Plus className="h-4 w-4" />
-                  <span>Criar categoria</span>
+                  <span>{t.createCategory}</span>
                 </button>
               </>
             )}

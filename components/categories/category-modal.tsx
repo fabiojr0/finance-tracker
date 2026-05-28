@@ -4,6 +4,8 @@ import { useState, createContext, useContext, useCallback, ReactNode } from 'rea
 import { Modal, ModalHeader, ModalContent } from '@/components/ui/modal'
 import { CategoryForm } from './category-form'
 import { useFinance } from '@/lib/contexts/finance-context'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { categoriesDict } from '@/lib/i18n/sections/categories'
 import { CreateCategoryInput, CategoryType, Category } from '@/types/category'
 
 interface CategoryModalContextType {
@@ -72,6 +74,8 @@ interface CategoryModalProps {
 
 function CategoryModal({ isOpen, onClose, defaultType, editingCategory }: CategoryModalProps) {
   const { createCategory, updateCategory } = useFinance()
+  const { locale } = usePreferences()
+  const t = categoriesDict[locale]
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (data: CreateCategoryInput) => {
@@ -102,7 +106,7 @@ function CategoryModal({ isOpen, onClose, defaultType, editingCategory }: Catego
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalHeader onClose={onClose}>
-        {editingCategory ? 'Editar Categoria' : 'Nova Categoria'}
+        {editingCategory ? t.editCategory : t.newCategory}
       </ModalHeader>
       <ModalContent>
         <CategoryForm

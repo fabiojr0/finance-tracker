@@ -10,15 +10,24 @@ import {
   startOfYear,
   endOfYear,
   eachMonthOfInterval,
-  format,
 } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import { TransactionWithCategory } from '@/types/transaction'
+import { usePreferences } from '@/lib/contexts/preferences-context'
 import { CalendarDayCell } from './calendar-day-cell'
 import type { CalendarViewMode } from './calendar-header'
 import { cn } from '@/lib/utils/cn'
 
-const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+// Short weekday names starting on Sunday (weekStartsOn: 0), in the active locale.
+function buildWeekdayLabels(localeTag: string): string[] {
+  // 2024-01-07 is a Sunday; the following 6 days complete the week.
+  return Array.from({ length: 7 }, (_, i) =>
+    cap(
+      new Date(2024, 0, 7 + i).toLocaleDateString(localeTag, { weekday: 'short' })
+    )
+  )
+}
 
 interface CalendarViewProps {
   currentDate: Date
@@ -40,6 +49,9 @@ export function CalendarView({
   onAddTransaction,
   onDrillDown,
 }: CalendarViewProps) {
+  const { localeTag } = usePreferences()
+  const weekdayLabels = useMemo(() => buildWeekdayLabels(localeTag), [localeTag])
+
   // ── Month View ─────────────────────────────────────────
   const monthDays = useMemo(() => {
     const monthStart = startOfMonth(currentDate)
@@ -82,11 +94,11 @@ export function CalendarView({
                 onClick={() => onDrillDown(month, 'month')}
                 className="text-sm font-semibold text-neutral-200 capitalize mb-2 block hover:text-primary transition-colors"
               >
-                {format(month, 'MMMM', { locale: ptBR })}
+                {month.toLocaleDateString(localeTag, { month: 'long' })}
               </button>
               {/* Mini weekday labels */}
               <div className="grid grid-cols-7 gap-px mb-1">
-                {WEEKDAY_LABELS.map((label) => (
+                {weekdayLabels.map((label) => (
                   <div
                     key={label}
                     className="text-[8px] text-center text-neutral-600 font-medium"
@@ -120,7 +132,7 @@ export function CalendarView({
       <div>
         {/* Weekday headers */}
         <div className="grid grid-cols-7 gap-2 mb-2">
-          {WEEKDAY_LABELS.map((label, i) => (
+          {weekdayLabels.map((label, i) => (
             <div
               key={label}
               className={cn(
@@ -157,7 +169,7 @@ export function CalendarView({
     <div>
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1 sm:mb-2">
-        {WEEKDAY_LABELS.map((label, i) => (
+        {weekdayLabels.map((label, i) => (
           <div
             key={label}
             className={cn(

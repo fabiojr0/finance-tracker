@@ -14,7 +14,7 @@ import {
   Legend,
 } from 'recharts'
 import { TransactionWithCategory } from '@/types/transaction'
-import { formatCurrency } from '@/lib/utils/format-currency'
+import { usePreferences } from '@/lib/contexts/preferences-context'
 
 interface FinancialEvolutionChartProps {
   transactions: TransactionWithCategory[]
@@ -23,6 +23,8 @@ interface FinancialEvolutionChartProps {
 }
 
 export function FinancialEvolutionChart({ transactions, startDate, endDate }: FinancialEvolutionChartProps) {
+  const { t, formatMoney, localeTag } = usePreferences()
+
   const chartData = useMemo(() => {
     const months: { [key: string]: { receitas: number; despesas: number; investimentos: number } } = {}
 
@@ -72,7 +74,7 @@ export function FinancialEvolutionChart({ transactions, startDate, endDate }: Fi
       const value = months[key]
       const [year, month] = key.split('-')
       const date = new Date(parseInt(year), parseInt(month) - 1, 1)
-      const monthName = date.toLocaleDateString('pt-BR', { month: 'short' })
+      const monthName = date.toLocaleDateString(localeTag, { month: 'short' })
 
       const monthBalance = value.receitas - value.despesas - value.investimentos
       accumulatedBalance += monthBalance
@@ -84,7 +86,13 @@ export function FinancialEvolutionChart({ transactions, startDate, endDate }: Fi
         Saldo: accumulatedBalance,
       }
     })
-  }, [transactions, startDate, endDate])
+  }, [transactions, startDate, endDate, localeTag])
+
+  const seriesLabels: Record<string, string> = {
+    Receitas: t.transactionTypes.receita,
+    Despesas: t.transactionTypes.despesa,
+    Saldo: t.dashboard.balance,
+  }
 
   const hasData = chartData.some((data) => data.Receitas > 0 || data.Despesas > 0)
 
@@ -95,7 +103,7 @@ export function FinancialEvolutionChart({ transactions, startDate, endDate }: Fi
           <div className="rounded-lg bg-emerald-500/15 p-1.5">
             <TrendingUp className="h-4 w-4 text-emerald-400" />
           </div>
-          <CardTitle className="text-base">Evolução Financeira</CardTitle>
+          <CardTitle className="text-base">{t.dashboard.financialEvolution}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="pt-0 px-2 sm:px-6">
@@ -105,9 +113,9 @@ export function FinancialEvolutionChart({ transactions, startDate, endDate }: Fi
               <div className="mx-auto mb-3 rounded-full bg-neutral-800/60 p-3 w-fit">
                 <TrendingUp className="h-6 w-6 text-neutral-500" />
               </div>
-              <p className="text-neutral-400 text-sm font-medium">Nenhum dado para exibir</p>
+              <p className="text-neutral-400 text-sm font-medium">{t.dashboard.noDataToShow}</p>
               <p className="text-xs text-neutral-500 mt-1">
-                Adicione transações para visualizar
+                {t.dashboard.addTransactionsToView}
               </p>
             </div>
           </div>
@@ -160,9 +168,10 @@ export function FinancialEvolutionChart({ transactions, startDate, endDate }: Fi
                     fontWeight: 600,
                     marginBottom: '4px',
                   }}
-                  formatter={(value) =>
-                    typeof value === 'number' ? formatCurrency(value) : 'R$ 0,00'
-                  }
+                  formatter={(value, name) => [
+                    typeof value === 'number' ? formatMoney(value) : formatMoney(0),
+                    seriesLabels[name as string] ?? name,
+                  ]}
                   cursor={{ stroke: '#525252', strokeDasharray: '4 4' }}
                 />
                 <Legend
@@ -170,7 +179,7 @@ export function FinancialEvolutionChart({ transactions, startDate, endDate }: Fi
                   iconSize={8}
                   wrapperStyle={{ fontSize: '12px', paddingTop: '12px' }}
                   formatter={(value) => (
-                    <span style={{ color: '#a3a3a3' }}>{value}</span>
+                    <span style={{ color: '#a3a3a3' }}>{seriesLabels[value as string] ?? value}</span>
                   )}
                 />
                 <Area

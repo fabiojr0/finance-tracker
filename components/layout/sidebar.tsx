@@ -15,7 +15,7 @@ import {
   X,
   LogOut,
 } from 'lucide-react'
-import { UI_TEXT } from '@/lib/constants/ui-text'
+import { usePreferences } from '@/lib/contexts/preferences-context'
 import { useUser } from '@/lib/hooks/use-user'
 
 interface SidebarProps {
@@ -23,52 +23,21 @@ interface SidebarProps {
   onClose?: () => void
 }
 
-const menuItems = [
-  {
-    href: '/dashboard',
-    label: UI_TEXT.dashboard.title,
-    icon: LayoutDashboard,
-  },
-  {
-    href: '/transacoes',
-    label: UI_TEXT.transactions.title,
-    icon: ArrowDownUp,
-  },
-  {
-    href: '/categorias',
-    label: UI_TEXT.categories.title,
-    icon: Tag,
-  },
-  {
-    href: '/calendario',
-    label: UI_TEXT.calendar.title,
-    icon: CalendarDays,
-  },
-  {
-    href: '/assistente-pagamentos',
-    label: 'Pagamentos',
-    icon: Receipt,
-  },
-  {
-    href: '/estatisticas',
-    label: UI_TEXT.reports.title,
-    icon: BarChart3,
-  },
-  {
-    href: '/relatorio-ia',
-    label: UI_TEXT.reports.aiReport,
-    icon: Sparkles,
-  },
-  {
-    href: '/configuracoes',
-    label: UI_TEXT.settings.title,
-    icon: Settings,
-  },
-]
-
 export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { user, signOut } = useUser()
+  const { t } = usePreferences()
+
+  const menuItems = [
+    { href: '/dashboard', label: t.nav.dashboard, icon: LayoutDashboard },
+    { href: '/transacoes', label: t.nav.transactions, icon: ArrowDownUp },
+    { href: '/categorias', label: t.nav.categories, icon: Tag },
+    { href: '/calendario', label: t.nav.calendar, icon: CalendarDays },
+    { href: '/assistente-pagamentos', label: t.nav.payments, icon: Receipt },
+    { href: '/estatisticas', label: t.nav.statistics, icon: BarChart3 },
+    { href: '/relatorio-ia', label: t.nav.aiReport, icon: Sparkles },
+    { href: '/configuracoes', label: t.nav.settings, icon: Settings },
+  ]
 
   return (
     <>
@@ -88,12 +57,16 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Mobile close button */}
-          <div className="flex items-center justify-between p-6 lg:hidden">
-            <h2 className="font-semibold text-neutral-200">Menu</h2>
+          {/* Brand + mobile close button */}
+          <div className="flex items-center justify-between p-6">
+            <div className="flex items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/ftlogo.png" alt="Finance Tracker" className="h-9 w-9" />
+              <span className="font-semibold text-white">Finance Tracker</span>
+            </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-neutral-800 rounded-md"
+              className="p-2 hover:bg-neutral-800 rounded-md lg:hidden"
             >
               <X className="h-5 w-5" />
             </button>
@@ -139,7 +112,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
               className="flex items-center justify-center gap-2 w-full px-4 py-2 text-sm text-red-400 hover:bg-neutral-800 rounded-lg transition-colors"
             >
               <LogOut className="h-4 w-4" />
-              <span>{UI_TEXT.auth.logout}</span>
+              <span>{t.nav.logout}</span>
             </button>
             <p className="text-xs text-neutral-500 text-center">
               Finance Tracker v1.0

@@ -3,8 +3,8 @@
 import { Modal, ModalHeader, ModalContent } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { TransactionWithCategory } from '@/types/transaction'
-import { formatCurrency } from '@/lib/utils/format-currency'
-import { formatDate } from '@/lib/utils/format-date'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { calendarDict } from '@/lib/i18n/sections/calendar'
 import { cn } from '@/lib/utils/cn'
 import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, LineChart } from 'lucide-react'
 
@@ -40,6 +40,18 @@ export function CalendarDayModal({
   onAddTransaction,
   onEditTransaction,
 }: CalendarDayModalProps) {
+  const { locale, formatMoney, localeTag } = usePreferences()
+  const t = calendarDict[locale]
+
+  // Parse the YYYY-MM-DD string into a local date (avoids UTC day shifts).
+  const [y, m, d] = date.split('-').map(Number)
+  const dateObj = new Date(y, (m || 1) - 1, d || 1)
+  const formattedDate = dateObj.toLocaleDateString(localeTag, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+
   const totalIncome = transactions
     .filter((t) => t.type === 'receita' && t.status === 'concluida')
     .reduce((s, t) => s + Number(t.amount), 0)
@@ -51,7 +63,7 @@ export function CalendarDayModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalHeader onClose={onClose}>
-        {formatDate(date, "dd 'de' MMMM 'de' yyyy")}
+        <span className="capitalize">{formattedDate}</span>
       </ModalHeader>
       <ModalContent>
         <div className="space-y-4">
@@ -62,7 +74,7 @@ export function CalendarDayModal({
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                   <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-400" />
                   <span className="text-xs font-medium text-emerald-400 tabular-nums">
-                    {formatCurrency(totalIncome)}
+                    {formatMoney(totalIncome)}
                   </span>
                 </div>
               )}
@@ -70,7 +82,7 @@ export function CalendarDayModal({
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/10 border border-red-500/20">
                   <ArrowUpRight className="h-3.5 w-3.5 text-red-400" />
                   <span className="text-xs font-medium text-red-400 tabular-nums">
-                    {formatCurrency(totalExpenses)}
+                    {formatMoney(totalExpenses)}
                   </span>
                 </div>
               )}
@@ -80,7 +92,7 @@ export function CalendarDayModal({
           {/* Transaction list */}
           {transactions.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-sm text-neutral-500 mb-3">Nenhuma transação neste dia</p>
+              <p className="text-sm text-neutral-500 mb-3">{t.noTransactionsThisDay}</p>
               <Button
                 size="sm"
                 onClick={() => {
@@ -89,17 +101,17 @@ export function CalendarDayModal({
                 }}
               >
                 <Plus className="h-4 w-4 mr-1.5" />
-                Adicionar Transação
+                {t.addTransaction}
               </Button>
             </div>
           ) : (
             <div className="space-y-1.5">
-              {transactions.map((t) => (
+              {transactions.map((tx) => (
                 <button
-                  key={t.id}
+                  key={tx.id}
                   onClick={() => {
                     onClose()
-                    onEditTransaction(t)
+                    onEditTransaction(tx)
                   }}
                   className={cn(
                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left',
@@ -109,30 +121,30 @@ export function CalendarDayModal({
                   <div
                     className={cn(
                       'flex items-center justify-center h-8 w-8 rounded-lg flex-shrink-0',
-                      t.type === 'receita' && 'bg-emerald-500/15',
-                      t.type === 'despesa' && 'bg-red-500/15',
-                      t.type === 'investimento' && 'bg-blue-500/15',
-                      t.type === 'transferencia' && 'bg-amber-500/15'
+                      tx.type === 'receita' && 'bg-emerald-500/15',
+                      tx.type === 'despesa' && 'bg-red-500/15',
+                      tx.type === 'investimento' && 'bg-blue-500/15',
+                      tx.type === 'transferencia' && 'bg-amber-500/15'
                     )}
                   >
-                    {getTypeIcon(t.type)}
+                    {getTypeIcon(tx.type)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-neutral-200 truncate">
-                      {t.description}
+                      {tx.description}
                     </p>
                     <p className="text-xs text-neutral-500">
-                      {t.category?.name || 'Sem categoria'}
+                      {tx.category?.name || t.noCategory}
                     </p>
                   </div>
                   <span
                     className={cn(
                       'text-sm font-semibold tabular-nums flex-shrink-0',
-                      t.type === 'receita' ? 'text-emerald-400' : t.type === 'investimento' ? 'text-blue-400' : 'text-red-400'
+                      tx.type === 'receita' ? 'text-emerald-400' : tx.type === 'investimento' ? 'text-blue-400' : 'text-red-400'
                     )}
                   >
-                    {t.type === 'receita' ? '+' : '-'}
-                    {formatCurrency(Number(t.amount))}
+                    {tx.type === 'receita' ? '+' : '-'}
+                    {formatMoney(Number(tx.amount))}
                   </span>
                 </button>
               ))}
@@ -152,7 +164,7 @@ export function CalendarDayModal({
                 }}
               >
                 <Plus className="h-4 w-4 mr-1.5" />
-                Adicionar Transação
+                {t.addTransaction}
               </Button>
             </div>
           )}

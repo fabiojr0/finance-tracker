@@ -6,6 +6,8 @@ import { Modal, ModalHeader, ModalContent } from '@/components/ui/modal'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { PaymentForm, PaymentFormData } from './payment-form'
 import { useFinance } from '@/lib/contexts/finance-context'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { paymentsDict } from '@/lib/i18n/sections/payments'
 import { TransactionWithCategory, CreateTransactionInput } from '@/types/transaction'
 
 interface PaymentModalProps {
@@ -45,6 +47,8 @@ export function PaymentModal({
 }: PaymentModalProps) {
   const { createTransaction, bulkCreateTransactions, updateTransaction, deleteTransaction } = useFinance()
   const confirm = useConfirm()
+  const { locale } = usePreferences()
+  const t = paymentsDict[locale]
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (data: PaymentFormData) => {
@@ -65,7 +69,7 @@ export function PaymentModal({
           toast.error(error)
           return
         }
-        toast.success('Pagamento atualizado')
+        toast.success(t.paymentUpdated)
         onClose()
         return
       }
@@ -111,8 +115,8 @@ export function PaymentModal({
 
       toast.success(
         rows.length === 1
-          ? 'Pagamento agendado'
-          : `${rows.length} pagamentos agendados`
+          ? t.paymentScheduled
+          : t.paymentsScheduled.replace('{n}', String(rows.length))
       )
       onClose()
     } finally {
@@ -123,9 +127,9 @@ export function PaymentModal({
   const handleDelete = async () => {
     if (!editingPayment) return
     const ok = await confirm({
-      title: 'Excluir pagamento?',
-      description: `"${editingPayment.description}" será removido. Esta ação não pode ser desfeita.`,
-      confirmLabel: 'Excluir',
+      title: t.deletePaymentTitle,
+      description: `"${editingPayment.description}" ${t.deletePaymentSuffix}`,
+      confirmLabel: t.deletePaymentConfirm,
       variant: 'destructive',
     })
     if (!ok) return
@@ -136,7 +140,7 @@ export function PaymentModal({
       toast.error(error)
       return
     }
-    toast.success('Pagamento excluído')
+    toast.success(t.paymentDeleted)
     onClose()
   }
 
@@ -159,7 +163,7 @@ export function PaymentModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalHeader onClose={onClose}>
-        {editingPayment ? 'Editar Pagamento' : 'Novo Pagamento Agendado'}
+        {editingPayment ? t.editPaymentTitle : t.newPaymentTitle}
       </ModalHeader>
       <ModalContent>
         <PaymentForm

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { GlobalSearch } from '@/components/shared/global-search'
 import { useTransactionModal } from '@/components/transactions/transaction-modal'
+import { usePreferences } from '@/lib/contexts/preferences-context'
 import { cn } from '@/lib/utils/cn'
 import { Menu, Bell, Plus, Receipt, Search } from 'lucide-react'
 
@@ -14,32 +15,31 @@ interface HeaderProps {
   onMenuClick?: () => void
 }
 
-const PAGE_TITLES: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/transacoes': 'Transações',
-  '/categorias': 'Categorias',
-  '/contas': 'Contas',
-  '/investimentos': 'Investimentos',
-  '/configuracoes': 'Configurações',
-  '/estatisticas': 'Estatísticas',
-  '/relatorio-ia': 'Relatório IA',
-  '/assistente-pagamentos': 'Assistente de Pagamentos',
-}
-
 export function Header({ onMenuClick }: HeaderProps) {
   const pathname = usePathname()
   const { openModal } = useTransactionModal()
+  const { t, localeTag } = usePreferences()
   const [showMobileSearch, setShowMobileSearch] = useState(false)
 
   const pageTitle = useMemo(() => {
-    return PAGE_TITLES[pathname] || 'Dashboard'
-  }, [pathname])
+    const titles: Record<string, string> = {
+      '/dashboard': t.nav.dashboard,
+      '/transacoes': t.nav.transactions,
+      '/categorias': t.nav.categories,
+      '/calendario': t.nav.calendar,
+      '/configuracoes': t.nav.settings,
+      '/estatisticas': t.nav.statistics,
+      '/relatorio-ia': t.nav.aiReport,
+      '/assistente-pagamentos': t.header.paymentsAssistant,
+    }
+    return titles[pathname] || t.nav.dashboard
+  }, [pathname, t])
 
   const currentMonth = useMemo(() => {
     const now = new Date()
-    return now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    return now.toLocaleDateString(localeTag, { month: 'long', year: 'numeric' })
       .replace(/^\w/, (c) => c.toUpperCase())
-  }, [])
+  }, [localeTag])
 
   return (
     <header className="bg-neutral-900/50 backdrop-blur-sm border-b border-neutral-800 sticky top-0 z-10">
@@ -48,7 +48,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <button
             onClick={onMenuClick}
             className="lg:hidden p-2 hover:bg-neutral-800 rounded-md flex-shrink-0"
-            aria-label="Toggle menu"
+            aria-label={t.header.toggleMenu}
           >
             <Menu className="h-5 w-5 text-neutral-400" />
           </button>
@@ -65,7 +65,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <button
             onClick={() => setShowMobileSearch(!showMobileSearch)}
             className="md:hidden p-2 hover:bg-neutral-800 rounded-lg transition-colors"
-            aria-label="Buscar"
+            aria-label={t.header.search}
           >
             <Search className="h-5 w-5 text-neutral-400" />
           </button>
@@ -81,8 +81,8 @@ export function Header({ onMenuClick }: HeaderProps) {
                 ? 'bg-cyan-500/15 text-cyan-400'
                 : 'hover:bg-neutral-800 text-neutral-400 hover:text-cyan-400'
             )}
-            aria-label="Assistente de pagamentos"
-            title="Assistente de pagamentos"
+            aria-label={t.header.paymentsAssistantAria}
+            title={t.header.paymentsAssistantAria}
           >
             <Receipt className="h-5 w-5" />
           </Link>
@@ -96,7 +96,7 @@ export function Header({ onMenuClick }: HeaderProps) {
 
           <Button size="sm" className="gap-1.5 h-9" onClick={() => openModal()}>
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Nova Transação</span>
+            <span className="hidden sm:inline">{t.header.newTransaction}</span>
           </Button>
         </div>
       </div>

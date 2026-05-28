@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { UI_TEXT } from '@/lib/constants/ui-text'
+import { useT } from '@/lib/contexts/preferences-context'
 import Link from 'next/link'
 
 const loginSchema = z.object({
@@ -21,6 +21,7 @@ type LoginFormData = z.infer<typeof loginSchema>
 
 export function LoginForm() {
   const router = useRouter()
+  const t = useT()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -51,7 +52,7 @@ export function LoginForm() {
       router.push('/dashboard')
       router.refresh()
     } catch {
-      setError('Ocorreu um erro ao fazer login. Tente novamente.')
+      setError(t.auth.loginError)
     } finally {
       setIsLoading(false)
     }
@@ -84,7 +85,7 @@ export function LoginForm() {
   return (
     <div className="bg-neutral-900 border border-neutral-800 rounded-lg shadow-lg p-8">
       <h2 className="text-2xl font-bold text-neutral-200 mb-6">
-        {UI_TEXT.auth.loginTitle}
+        {t.auth.loginTitle}
       </h2>
 
       {error && (
@@ -101,11 +102,11 @@ export function LoginForm() {
         className="space-y-4"
       >
         <div>
-          <Label htmlFor="email">{UI_TEXT.auth.email}</Label>
+          <Label htmlFor="email">{t.auth.email}</Label>
           <Input
             id="email"
             type="email"
-            placeholder="seu@email.com"
+            placeholder={t.auth.emailPlaceholder}
             {...register('email')}
             disabled={isLoading}
           />
@@ -115,11 +116,11 @@ export function LoginForm() {
         </div>
 
         <div>
-          <Label htmlFor="password">{UI_TEXT.auth.password}</Label>
+          <Label htmlFor="password">{t.auth.password}</Label>
           <Input
             id="password"
             type="password"
-            placeholder="••••••••"
+            placeholder={t.auth.passwordPlaceholder}
             {...register('password')}
             disabled={isLoading}
           />
@@ -131,7 +132,7 @@ export function LoginForm() {
         </div>
 
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? 'Entrando...' : UI_TEXT.auth.login}
+          {isLoading ? t.auth.loggingIn : t.auth.login}
         </Button>
       </form>
 
@@ -174,12 +175,12 @@ export function LoginForm() {
 
       <div className="mt-6 text-center">
         <p className="text-sm text-neutral-600">
-          {UI_TEXT.auth.dontHaveAccount}{' '}
+          {t.auth.dontHaveAccount}{' '}
           <Link
             href="/cadastro"
             className="text-primary font-medium hover:underline"
           >
-            {UI_TEXT.auth.signup}
+            {t.auth.signup}
           </Link>
         </p>
       </div>

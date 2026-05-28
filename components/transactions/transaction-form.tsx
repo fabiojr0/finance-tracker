@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { CategorySelect } from '@/components/ui/category-select'
 import { useCategoryModal } from '@/components/categories/category-modal'
 import { useFinance } from '@/lib/contexts/finance-context'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { transactionsDict } from '@/lib/i18n/sections/transactions'
 import { CreateTransactionInput } from '@/types/transaction'
 import { CategoryType } from '@/types/category'
 import { z } from 'zod'
@@ -37,8 +39,6 @@ interface TransactionFormProps {
 const typeOptions = [
   {
     value: 'despesa',
-    label: 'Despesa',
-    shortLabel: 'Despesa',
     icon: ArrowUpRight,
     color: 'text-red-500',
     bgColor: 'bg-red-500/10',
@@ -46,8 +46,6 @@ const typeOptions = [
   },
   {
     value: 'receita',
-    label: 'Receita',
-    shortLabel: 'Receita',
     icon: ArrowDownLeft,
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
@@ -55,8 +53,6 @@ const typeOptions = [
   },
   {
     value: 'investimento',
-    label: 'Investimento',
-    shortLabel: 'Invest.',
     icon: LineChart,
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',
@@ -64,14 +60,12 @@ const typeOptions = [
   },
   {
     value: 'transferencia',
-    label: 'Transferência',
-    shortLabel: 'Transf.',
     icon: ArrowLeftRight,
     color: 'text-yellow-500',
     bgColor: 'bg-yellow-500/10',
     borderColor: 'border-yellow-500',
   },
-]
+] as const
 
 export function TransactionForm({
   onSubmit,
@@ -82,6 +76,15 @@ export function TransactionForm({
 }: TransactionFormProps) {
   const { categories } = useFinance()
   const { openModal: openCategoryModal } = useCategoryModal()
+  const { t, locale } = usePreferences()
+  const tx = transactionsDict[locale]
+
+  const shortLabels: Record<string, string> = {
+    despesa: tx.typeShortDespesa,
+    receita: tx.typeShortReceita,
+    investimento: tx.typeShortInvestimento,
+    transferencia: tx.typeShortTransferencia,
+  }
 
   const {
     register,
@@ -127,7 +130,7 @@ export function TransactionForm({
       <div className="space-y-2">
         <label className="text-sm font-medium text-neutral-300 flex items-center gap-2">
           <Tag className="h-4 w-4 text-neutral-500" />
-          Tipo de Transação
+          {tx.transactionType}
         </label>
         <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
           {typeOptions.map((option) => {
@@ -149,8 +152,8 @@ export function TransactionForm({
               >
                 <Icon className={cn('h-4 w-4 flex-shrink-0', isSelected ? option.color : 'text-neutral-400')} />
                 <span className={cn('text-xs sm:text-sm font-medium truncate', isSelected ? option.color : 'text-neutral-300')}>
-                  <span className="sm:hidden">{option.shortLabel}</span>
-                  <span className="hidden sm:inline">{option.label}</span>
+                  <span className="sm:hidden">{shortLabels[option.value]}</span>
+                  <span className="hidden sm:inline">{t.transactionTypes[option.value]}</span>
                 </span>
               </button>
             )
@@ -165,7 +168,7 @@ export function TransactionForm({
       <div className="space-y-2">
         <label htmlFor="amount" className="text-sm font-medium text-neutral-300 flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-neutral-500" />
-          Valor
+          {tx.amount}
         </label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm font-medium">
@@ -223,11 +226,11 @@ export function TransactionForm({
       <div className="space-y-2">
         <label htmlFor="description" className="text-sm font-medium text-neutral-300 flex items-center gap-2">
           <FileText className="h-4 w-4 text-neutral-500" />
-          Descrição
+          {tx.description}
         </label>
         <input
           id="description"
-          placeholder="Ex: Compras no mercado"
+          placeholder={tx.descriptionPlaceholder}
           {...register('description')}
           disabled={isLoading}
           className={cn(
@@ -248,7 +251,7 @@ export function TransactionForm({
         <div className="space-y-2">
           <label htmlFor="date" className="text-sm font-medium text-neutral-300 flex items-center gap-2">
             <Calendar className="h-4 w-4 text-neutral-500" />
-            Data
+            {tx.date}
           </label>
           <input
             id="date"
@@ -272,7 +275,7 @@ export function TransactionForm({
         <div className="space-y-2">
           <label className="text-sm font-medium text-neutral-300 flex items-center gap-2">
             <Tag className="h-4 w-4 text-neutral-500" />
-            Categoria
+            {tx.category}
           </label>
           <Controller
             name="category_id"
@@ -282,7 +285,7 @@ export function TransactionForm({
                 value={field.value || ''}
                 onChange={field.onChange}
                 categories={filteredCategories}
-                placeholder="Selecione"
+                placeholder={tx.selectCategory}
                 disabled={isLoading}
                 error={!!errors.category_id}
                 onCreateNew={() => openCategoryModal(transactionType as CategoryType)}
@@ -299,8 +302,8 @@ export function TransactionForm({
       <div className="space-y-2">
         <label htmlFor="notes" className="text-sm font-medium text-neutral-300 flex items-center gap-2">
           <MessageSquare className="h-4 w-4 text-neutral-500" />
-          Observações
-          <span className="text-neutral-500 font-normal text-xs">(opcional)</span>
+          {tx.notes}
+          <span className="text-neutral-500 font-normal text-xs">({t.common.optional.toLowerCase()})</span>
         </label>
         <textarea
           id="notes"
@@ -312,7 +315,7 @@ export function TransactionForm({
             'border-neutral-700 hover:border-neutral-600'
           )}
           rows={3}
-          placeholder="Adicione observações..."
+          placeholder={tx.notesPlaceholder}
           disabled={isLoading}
         />
       </div>
@@ -329,7 +332,7 @@ export function TransactionForm({
               size="sm"
               className="sm:h-10 px-3 sm:px-4 text-red-400 hover:text-red-300 hover:bg-red-500/10"
             >
-              Excluir
+              {t.common.delete}
             </Button>
           )}
         </div>
@@ -343,11 +346,11 @@ export function TransactionForm({
               size="sm"
               className="sm:h-10 px-4 sm:px-6"
             >
-              Cancelar
+              {t.common.cancel}
             </Button>
           )}
           <Button type="submit" disabled={isLoading} size="sm" className="sm:h-10 px-4 sm:px-6">
-            {isLoading ? 'Salvando...' : 'Salvar'}
+            {isLoading ? t.common.saving : t.common.save}
           </Button>
         </div>
       </div>

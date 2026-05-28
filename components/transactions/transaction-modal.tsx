@@ -5,6 +5,8 @@ import { Modal, ModalHeader, ModalContent } from '@/components/ui/modal'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { TransactionForm } from './transaction-form'
 import { useFinance } from '@/lib/contexts/finance-context'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { transactionsDict } from '@/lib/i18n/sections/transactions'
 import { CreateTransactionInput, TransactionWithCategory } from '@/types/transaction'
 
 interface TransactionModalContextType {
@@ -68,6 +70,8 @@ interface TransactionModalProps {
 function TransactionModal({ isOpen, onClose, editingTransaction, defaultDate }: TransactionModalProps) {
   const { createTransaction, updateTransaction, deleteTransaction } = useFinance()
   const confirm = useConfirm()
+  const { t, locale } = usePreferences()
+  const tx = transactionsDict[locale]
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (data: CreateTransactionInput) => {
@@ -87,9 +91,9 @@ function TransactionModal({ isOpen, onClose, editingTransaction, defaultDate }: 
   const handleDelete = async () => {
     if (!editingTransaction) return
     const ok = await confirm({
-      title: 'Excluir transação?',
-      description: `"${editingTransaction.description}" será removida. Esta ação não pode ser desfeita.`,
-      confirmLabel: 'Excluir',
+      title: tx.deleteTitle,
+      description: `"${editingTransaction.description}" ${tx.deleteDescriptionNamed}`,
+      confirmLabel: t.common.delete,
       variant: 'destructive',
     })
     if (!ok) return
@@ -116,7 +120,7 @@ function TransactionModal({ isOpen, onClose, editingTransaction, defaultDate }: 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalHeader onClose={onClose}>
-        {editingTransaction ? 'Editar Transação' : 'Nova Transação'}
+        {editingTransaction ? tx.editTransaction : tx.newTransaction}
       </ModalHeader>
       <ModalContent>
         <TransactionForm

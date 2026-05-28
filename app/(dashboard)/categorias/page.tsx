@@ -9,10 +9,13 @@ import { CategoryIcon } from '@/components/shared/category-icon'
 import { useCategoryModal } from '@/components/categories/category-modal'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { useFinance } from '@/lib/contexts/finance-context'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { categoriesDict } from '@/lib/i18n/sections/categories'
 import { Category } from '@/types/category'
 
 interface CategorySectionProps {
   title: string
+  countLabel: string
   icon: React.ReactNode
   iconBg: string
   borderColor: string
@@ -26,6 +29,7 @@ interface CategorySectionProps {
 
 function CategorySection({
   title,
+  countLabel,
   icon,
   iconBg,
   categories,
@@ -44,7 +48,7 @@ function CategorySection({
           </div>
           <div>
             <CardTitle className={`text-base sm:text-lg text-white`}>{title}</CardTitle>
-            <p className="text-xs text-neutral-500 mt-0.5">{categories.length} categorias</p>
+            <p className="text-xs text-neutral-500 mt-0.5">{categories.length} {countLabel}</p>
           </div>
         </div>
       </CardHeader>
@@ -109,16 +113,18 @@ function CategorySection({
 export default function CategoriesPage() {
   const { categories, categoriesLoading: loading, deleteCategory } = useFinance()
   const { openModal, openEditModal } = useCategoryModal()
+  const { locale, t: tCommon } = usePreferences()
+  const t = categoriesDict[locale]
   const confirm = useConfirm()
 
   const handleDelete = async (id: string) => {
     const category = categories.find((c) => c.id === id)
     const ok = await confirm({
-      title: 'Excluir categoria?',
+      title: t.deleteTitle,
       description: category
-        ? `A categoria "${category.name}" será removida. Esta ação não pode ser desfeita.`
-        : 'Esta ação não pode ser desfeita.',
-      confirmLabel: 'Excluir',
+        ? `${t.deleteDescription} ("${category.name}")`
+        : t.deleteDescriptionGeneric,
+      confirmLabel: tCommon.common.delete,
       variant: 'destructive',
     })
     if (ok) {
@@ -155,66 +161,70 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Categorias</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{t.title}</h1>
           <p className="text-neutral-400 text-sm mt-1">
-            Organize suas transações por categoria ({categories.length} no total)
+            {t.subtitle} ({categories.length} {t.totalCount})
           </p>
         </div>
         <Button onClick={() => openModal()} size="sm" className="sm:h-10 gap-1.5">
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Nova Categoria</span>
+          <span className="hidden sm:inline">{t.newCategory}</span>
         </Button>
       </div>
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         <CategorySection
-          title="Despesas"
+          title={t.expensesTitle}
+          countLabel={t.count}
           icon={<ArrowUpRight className="h-4 w-4 text-red-400" />}
           iconBg="bg-red-500/15"
           borderColor="border-red-500/20"
           categories={expenseCategories}
           defaultColor="#ef4444"
-          emptyTitle="Nenhuma categoria de despesa"
-          emptyDescription="Adicione categorias para organizar suas despesas."
+          emptyTitle={t.emptyExpenseTitle}
+          emptyDescription={t.emptyExpenseDescription}
           onEdit={openEditModal}
           onDelete={handleDelete}
         />
 
         <CategorySection
-          title="Receitas"
+          title={t.incomeTitle}
+          countLabel={t.count}
           icon={<ArrowDownLeft className="h-4 w-4 text-emerald-400" />}
           iconBg="bg-emerald-500/15"
           borderColor="border-emerald-500/20"
           categories={incomeCategories}
           defaultColor="#22c55e"
-          emptyTitle="Nenhuma categoria de receita"
-          emptyDescription="Adicione categorias para organizar suas receitas."
+          emptyTitle={t.emptyIncomeTitle}
+          emptyDescription={t.emptyIncomeDescription}
           onEdit={openEditModal}
           onDelete={handleDelete}
         />
 
         <CategorySection
-          title="Investimentos"
+          title={t.investmentsTitle}
+          countLabel={t.count}
           icon={<LineChart className="h-4 w-4 text-blue-400" />}
           iconBg="bg-blue-500/15"
           borderColor="border-blue-500/20"
           categories={investmentCategories}
           defaultColor="#3b82f6"
-          emptyTitle="Nenhuma categoria de investimento"
-          emptyDescription="Adicione categorias para organizar seus investimentos."
+          emptyTitle={t.emptyInvestmentTitle}
+          emptyDescription={t.emptyInvestmentDescription}
           onEdit={openEditModal}
           onDelete={handleDelete}
         />
 
         <CategorySection
-          title="Transferências"
+          title={t.transfersTitle}
+          countLabel={t.count}
           icon={<ArrowLeftRight className="h-4 w-4 text-amber-400" />}
           iconBg="bg-amber-500/15"
           borderColor="border-amber-500/20"
           categories={transferCategories}
           defaultColor="#eab308"
-          emptyTitle="Nenhuma categoria de transferência"
-          emptyDescription="Adicione categorias para organizar suas transferências."
+          emptyTitle={t.emptyTransferTitle}
+          emptyDescription={t.emptyTransferDescription}
           onEdit={openEditModal}
           onDelete={handleDelete}
         />

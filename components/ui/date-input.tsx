@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { sharedDict } from '@/lib/i18n/sections/shared'
 
 interface DateInputProps {
   value: string // ISO format: yyyy-mm-dd
@@ -11,7 +13,9 @@ interface DateInputProps {
   className?: string
 }
 
-export function DateInput({ value, onChange, placeholder = 'dd/mm/aaaa', className }: DateInputProps) {
+export function DateInput({ value, onChange, placeholder, className }: DateInputProps) {
+  const { locale } = usePreferences()
+  const resolvedPlaceholder = placeholder ?? sharedDict[locale].datePlaceholder
   const [displayValue, setDisplayValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const hiddenInputRef = useRef<HTMLInputElement>(null)
@@ -81,7 +85,7 @@ export function DateInput({ value, onChange, placeholder = 'dd/mm/aaaa', classNa
         type="text"
         value={displayValue}
         onChange={handleChange}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         className={cn(
           'w-full h-10 rounded-md border border-neutral-700 bg-neutral-800 px-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary',
           className

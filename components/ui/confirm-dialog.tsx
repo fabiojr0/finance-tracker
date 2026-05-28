@@ -11,6 +11,8 @@ import {
 import { AlertTriangle } from 'lucide-react'
 import { Modal } from './modal'
 import { Button } from './button'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { sharedDict } from '@/lib/i18n/sections/shared'
 
 export interface ConfirmOptions {
   title: string
@@ -34,6 +36,9 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   const pendingRef = useRef<PendingState | null>(null)
   pendingRef.current = pending
 
+  const { locale, t: tCommon } = usePreferences()
+  const t = sharedDict[locale]
+
   const confirm = useCallback<ConfirmFn>((options) => {
     return new Promise<boolean>((resolve) => {
       setPending({ options, resolve })
@@ -49,8 +54,10 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 
   const options = pending?.options
   const variant = options?.variant ?? 'destructive'
-  const confirmLabel = options?.confirmLabel ?? (variant === 'destructive' ? 'Excluir' : 'Confirmar')
-  const cancelLabel = options?.cancelLabel ?? 'Cancelar'
+  const confirmLabel =
+    options?.confirmLabel ??
+    (variant === 'destructive' ? t.confirmDeleteLabel : tCommon.common.confirm)
+  const cancelLabel = options?.cancelLabel ?? tCommon.common.cancel
 
   return (
     <ConfirmContext.Provider value={confirm}>

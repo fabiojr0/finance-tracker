@@ -1,7 +1,8 @@
 'use client'
 
 import { cn } from '@/lib/utils/cn'
-import { formatCurrency } from '@/lib/utils/format-currency'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { calendarDict } from '@/lib/i18n/sections/calendar'
 import { TransactionWithCategory } from '@/types/transaction'
 import { Plus } from 'lucide-react'
 import { isToday, isSameMonth } from 'date-fns'
@@ -24,6 +25,9 @@ export function CalendarDayCell({
   onAddTransaction,
   onDrillDown,
 }: CalendarDayCellProps) {
+  const { locale, formatMoney } = usePreferences()
+  const t = calendarDict[locale]
+
   const today = isToday(date)
   const inCurrentMonth = isSameMonth(date, currentMonth)
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -58,7 +62,7 @@ export function CalendarDayCell({
             ? { backgroundColor: 'rgba(34, 197, 94, 0.15)' }
             : undefined
         }
-        title={`${date.getDate()} — Receitas: ${formatCurrency(totalIncome)} | Despesas: ${formatCurrency(totalExpenses)}`}
+        title={`${date.getDate()} — ${t.incomeLabel}: ${formatMoney(totalIncome)} | ${t.expensesLabel}: ${formatMoney(totalExpenses)}`}
       >
         <span className={cn(
           today ? 'text-primary' : inCurrentMonth ? 'text-neutral-400' : 'text-neutral-600'
@@ -102,7 +106,7 @@ export function CalendarDayCell({
         </button>
         <div
           className="h-5 w-5 flex items-center justify-center rounded-full bg-primary/20 text-primary opacity-60 group-hover/cell:opacity-100 transition-opacity"
-          title="Ver transações do dia"
+          title={t.viewDayTransactions}
         >
           <Plus className="h-3 w-3" />
         </div>
@@ -113,12 +117,12 @@ export function CalendarDayCell({
         <div className="flex items-center gap-1.5 mb-1 flex-wrap">
           {totalIncome > 0 && (
             <span className="text-[10px] font-medium text-emerald-400/80 tabular-nums">
-              +{formatCurrency(totalIncome)}
+              +{formatMoney(totalIncome)}
             </span>
           )}
           {totalExpenses > 0 && (
             <span className="text-[10px] font-medium text-red-400/80 tabular-nums">
-              -{formatCurrency(totalExpenses)}
+              -{formatMoney(totalExpenses)}
             </span>
           )}
         </div>
@@ -126,27 +130,27 @@ export function CalendarDayCell({
 
       {/* Transaction list */}
       <div className="space-y-0.5">
-        {visibleTransactions.map((t) => (
+        {visibleTransactions.map((tx) => (
           <div
-            key={t.id}
+            key={tx.id}
             className={cn(
               'flex items-center gap-1 px-1 py-0.5 rounded text-[10px] sm:text-xs truncate',
-              t.type === 'receita' && 'bg-emerald-500/10 text-emerald-400',
-              t.type === 'despesa' && 'bg-red-500/10 text-red-400',
-              t.type === 'investimento' && 'bg-blue-500/10 text-blue-400',
-              t.type === 'transferencia' && 'bg-amber-500/10 text-amber-400'
+              tx.type === 'receita' && 'bg-emerald-500/10 text-emerald-400',
+              tx.type === 'despesa' && 'bg-red-500/10 text-red-400',
+              tx.type === 'investimento' && 'bg-blue-500/10 text-blue-400',
+              tx.type === 'transferencia' && 'bg-amber-500/10 text-amber-400'
             )}
-            title={`${t.description} — ${formatCurrency(Number(t.amount))}`}
+            title={`${tx.description} — ${formatMoney(Number(tx.amount))}`}
           >
-            <span className="truncate flex-1">{t.description}</span>
+            <span className="truncate flex-1">{tx.description}</span>
             <span className="tabular-nums font-medium flex-shrink-0">
-              {formatCurrency(Number(t.amount))}
+              {formatMoney(Number(tx.amount))}
             </span>
           </div>
         ))}
         {hiddenCount > 0 && (
           <span className="text-[10px] text-neutral-500 px-1">
-            +{hiddenCount} mais
+            +{hiddenCount} {t.more}
           </span>
         )}
       </div>

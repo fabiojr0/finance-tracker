@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Search, ArrowDownLeft, ArrowUpRight, LineChart, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useFinance } from '@/lib/contexts/finance-context'
-import { formatCurrency } from '@/lib/utils/format-currency'
-import { formatDate } from '@/lib/utils/format-date'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { sharedDict } from '@/lib/i18n/sections/shared'
 import { cn } from '@/lib/utils/cn'
 import { CategoryIcon } from './category-icon'
 
@@ -15,6 +15,14 @@ function normalizeText(text: string): string {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+}
+
+// Parse an ISO date-only string (yyyy-mm-dd) as a local date to avoid the
+// UTC-midnight off-by-one shift in negative-offset timezones.
+function formatLocalizedDate(iso: string, localeTag: string): string {
+  const [year, month, day] = iso.split('-').map(Number)
+  if (!year || !month || !day) return iso
+  return new Date(year, month - 1, day).toLocaleDateString(localeTag)
 }
 
 interface GlobalSearchProps {
@@ -30,18 +38,20 @@ export function GlobalSearch({ isMobile, onClose }: GlobalSearchProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const { transactions, categories } = useFinance()
+  const { locale, formatMoney, localeTag, t: tCommon } = usePreferences()
+  const t = sharedDict[locale]
 
   const results = useMemo(() => query.length >= 2
     ? transactions
-        .filter((t) => {
+        .filter((tx) => {
           const searchNormalized = normalizeText(query)
-          const matchDescription = normalizeText(t.description).includes(searchNormalized)
-          const matchCategory = t.category?.name && normalizeText(t.category.name).includes(searchNormalized)
-          const matchAmount = formatCurrency(t.amount).includes(query)
+          const matchDescription = normalizeText(tx.description).includes(searchNormalized)
+          const matchCategory = tx.category?.name && normalizeText(tx.category.name).includes(searchNormalized)
+          const matchAmount = formatMoney(tx.amount).includes(query)
           return matchDescription || matchCategory || matchAmount
         })
         .slice(0, 8)
-    : [], [query, transactions])
+    : [], [query, transactions, formatMoney])
 
   const categoryResults = useMemo(() => query.length >= 2
     ? categories
@@ -133,7 +143,7 @@ export function GlobalSearch({ isMobile, onClose }: GlobalSearchProps) {
         }}
         onFocus={() => setIsOpen(true)}
         onKeyDown={handleKeyDown}
-        placeholder={isMobile ? 'Buscar transações...' : 'Buscar transações... (Ctrl+K)'}
+        placeholder={isMobile ? t.searchPlaceholder : t.searchPlaceholderShortcut}
         className={cn(
           'pl-9 pr-8 bg-neutral-800 border-neutral-700 h-9 text-sm',
           isMobile ? 'w-full' : 'w-72'
@@ -158,14 +168,14 @@ export function GlobalSearch({ isMobile, onClose }: GlobalSearchProps) {
         )}>
           {!hasResults ? (
             <div className="p-4 text-center text-neutral-500 text-sm">
-              Nenhum resultado encontrado para &quot;{query}&quot;
+              {t.searchNoResults} &quot;{query}&quot;
             </div>
           ) : (
             <div className="max-h-80 sm:max-h-96 overflow-y-auto">
               {results.length > 0 && (
                 <div>
                   <div className="px-3 py-2 text-xs font-medium text-neutral-500 bg-neutral-800/50">
-                    Transações
+                    {t.resultsTransactions}
                   </div>
                   {results.map((transaction, index) => (
                     <button
@@ -201,8 +211,8 @@ export function GlobalSearch({ isMobile, onClose }: GlobalSearchProps) {
                           </p>
                           <p className="text-xs text-neutral-500 flex items-center gap-1 truncate">
                             {transaction.category && <CategoryIcon icon={transaction.category.icon} size="sm" />}
-                            <span className="truncate">{transaction.category?.name || 'Sem categoria'}</span>
-                            <span className="hidden sm:inline"> • {formatDate(transaction.date)}</span>
+                            <span className="truncate">{transaction.category?.name || t.uncategorized}</span>
+                            <span className="hidden sm:inline"> • {formatLocalizedDate(transaction.date, localeTag)}</span>
                           </p>
                         </div>
                       </div>
@@ -216,7 +226,7 @@ export function GlobalSearch({ isMobile, onClose }: GlobalSearchProps) {
                             : 'text-red-500'
                         )}
                       >
-                        {transaction.type === 'receita' ? '+' : '-'} {formatCurrency(transaction.amount)}
+                        {transaction.type === 'receita' ? '+' : '-'} {formatMoney(transaction.amount)}
                       </span>
                     </button>
                   ))}
@@ -226,7 +236,7 @@ export function GlobalSearch({ isMobile, onClose }: GlobalSearchProps) {
               {categoryResults.length > 0 && (
                 <div>
                   <div className="px-3 py-2 text-xs font-medium text-neutral-500 bg-neutral-800/50">
-                    Categorias
+                    {t.resultsCategories}
                   </div>
                   {categoryResults.map((category, index) => (
                     <button
@@ -240,7 +250,7 @@ export function GlobalSearch({ isMobile, onClose }: GlobalSearchProps) {
                       <CategoryIcon icon={category.icon} size="lg" />
                       <div className="text-left">
                         <p className="text-sm font-medium text-white">{category.name}</p>
-                        <p className="text-xs text-neutral-500 capitalize">{category.type}</p>
+                        <p className="text-xs text-neutral-500 capitalize">{tCommon.transactionTypes[category.type]}</p>
                       </div>
                     </button>
                   ))}
@@ -250,9 +260,9 @@ export function GlobalSearch({ isMobile, onClose }: GlobalSearchProps) {
           )}
 
           <div className="px-3 py-2 border-t border-neutral-800 flex items-center justify-between text-xs text-neutral-500">
-            <span className="hidden sm:inline">Use ↑↓ para navegar</span>
-            <span className="sm:hidden">Toque para selecionar</span>
-            <span className="hidden sm:inline">Enter para selecionar • Esc para fechar</span>
+            <span className="hidden sm:inline">{t.hintNavigate}</span>
+            <span className="sm:hidden">{t.hintTap}</span>
+            <span className="hidden sm:inline">{t.hintSelectClose}</span>
           </div>
         </div>
       )}

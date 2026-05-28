@@ -91,6 +91,28 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { categoriesDict } from '@/lib/i18n/sections/categories'
+
+// Maps the (Portuguese) group identifier stored in AVAILABLE_ICONS to its
+// translation key in the categories section dictionary. The stored value is
+// data used for grouping/lookup; the label shown to the user is translated.
+const GROUP_KEYS: Record<string, keyof (typeof categoriesDict)['pt']> = {
+  'Finanças': 'groupFinance',
+  'Compras': 'groupShopping',
+  'Moradia': 'groupHousing',
+  'Transporte': 'groupTransport',
+  'Alimentação': 'groupFood',
+  'Saúde': 'groupHealth',
+  'Lazer': 'groupLeisure',
+  'Tecnologia': 'groupTech',
+  'Educação': 'groupEducation',
+  'Trabalho': 'groupWork',
+  'Família': 'groupFamily',
+  'Pessoal': 'groupPersonal',
+  'Serviços': 'groupServices',
+  'Natureza': 'groupNature',
+}
 
 export const AVAILABLE_ICONS: { name: string; icon: LucideIcon; category: string }[] = [
   // Finanças
@@ -216,6 +238,13 @@ interface IconPickerProps {
 }
 
 export function IconPicker({ value, onChange, disabled }: IconPickerProps) {
+  const { locale } = usePreferences()
+  const t = categoriesDict[locale]
+  const groupLabel = (category: string) => {
+    const key = GROUP_KEYS[category]
+    return key ? t[key] : category
+  }
+
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
 
@@ -226,7 +255,8 @@ export function IconPicker({ value, onChange, disabled }: IconPickerProps) {
     ? AVAILABLE_ICONS.filter(
         (i) =>
           i.name.toLowerCase().includes(search.toLowerCase()) ||
-          i.category.toLowerCase().includes(search.toLowerCase())
+          i.category.toLowerCase().includes(search.toLowerCase()) ||
+          groupLabel(i.category).toLowerCase().includes(search.toLowerCase())
       )
     : AVAILABLE_ICONS
 
@@ -270,7 +300,7 @@ export function IconPicker({ value, onChange, disabled }: IconPickerProps) {
             <span className="capitalize">{selectedIcon?.name.replace('-', ' ')}</span>
           </>
         ) : (
-          <span>Selecione um ícone</span>
+          <span>{t.selectIcon}</span>
         )}
       </button>
 
@@ -289,7 +319,7 @@ export function IconPicker({ value, onChange, disabled }: IconPickerProps) {
           <div className="relative z-10 w-[90vw] max-w-md bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-200">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-neutral-800">
-              <h3 className="text-base font-semibold text-neutral-200">Escolher Ícone</h3>
+              <h3 className="text-base font-semibold text-neutral-200">{t.chooseIcon}</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -306,7 +336,7 @@ export function IconPicker({ value, onChange, disabled }: IconPickerProps) {
             <div className="p-3 border-b border-neutral-800">
               <input
                 type="text"
-                placeholder="Buscar ícone..."
+                placeholder={t.searchIconPlaceholder}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full px-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-neutral-200 placeholder:text-neutral-500"
@@ -319,7 +349,7 @@ export function IconPicker({ value, onChange, disabled }: IconPickerProps) {
               {Object.entries(groupedIcons).map(([category, icons]) => (
                 <div key={category} className="mb-4">
                   <p className="text-xs font-medium text-neutral-500 mb-2 px-1">
-                    {category}
+                    {groupLabel(category)}
                   </p>
                   <div className="grid grid-cols-7 sm:grid-cols-8 gap-1">
                     {icons.map(({ name, icon: Icon }) => (
@@ -345,7 +375,7 @@ export function IconPicker({ value, onChange, disabled }: IconPickerProps) {
               ))}
               {Object.keys(groupedIcons).length === 0 && (
                 <p className="text-center text-neutral-500 text-sm py-8">
-                  Nenhum ícone encontrado
+                  {t.noIconFound}
                 </p>
               )}
             </div>

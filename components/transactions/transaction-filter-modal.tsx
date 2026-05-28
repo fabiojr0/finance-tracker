@@ -5,6 +5,8 @@ import { Filter, X, Calendar } from 'lucide-react'
 import { Modal, ModalHeader, ModalContent } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { DateInput } from '@/components/ui/date-input'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { transactionsDict } from '@/lib/i18n/sections/transactions'
 import { Category } from '@/types/category'
 
 export interface TransactionFilters {
@@ -31,6 +33,8 @@ export function TransactionFilterModal({
   onApplyFilters,
   categories,
 }: TransactionFilterModalProps) {
+  const { t, locale } = usePreferences()
+  const tx = transactionsDict[locale]
   const [localFilters, setLocalFilters] = useState<TransactionFilters>(filters)
 
   // Sync local filters when modal opens
@@ -66,13 +70,13 @@ export function TransactionFilterModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalHeader onClose={onClose}>Filtrar Transações</ModalHeader>
+      <ModalHeader onClose={onClose}>{tx.filterTitle}</ModalHeader>
       <ModalContent className="overflow-visible">
         <div className="space-y-4">
           {/* Type */}
           <div>
             <label className="block text-sm font-medium text-neutral-300 mb-2">
-              Tipo
+              {tx.colType}
             </label>
             <select
               value={localFilters.typeFilter}
@@ -81,18 +85,18 @@ export function TransactionFilterModal({
               }
               className="w-full h-10 rounded-md border border-neutral-700 bg-neutral-800 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <option value="all">Todos os tipos</option>
-              <option value="receita">Receita</option>
-              <option value="despesa">Despesa</option>
-              <option value="investimento">Investimento</option>
-              <option value="transferencia">Transferência</option>
+              <option value="all">{tx.allTypes}</option>
+              <option value="receita">{t.transactionTypes.receita}</option>
+              <option value="despesa">{t.transactionTypes.despesa}</option>
+              <option value="investimento">{t.transactionTypes.investimento}</option>
+              <option value="transferencia">{t.transactionTypes.transferencia}</option>
             </select>
           </div>
 
           {/* Category */}
           <div>
             <label className="block text-sm font-medium text-neutral-300 mb-2">
-              Categoria
+              {tx.colCategory}
             </label>
             <select
               value={localFilters.categoryFilter}
@@ -101,7 +105,7 @@ export function TransactionFilterModal({
               }
               className="w-full h-10 rounded-md border border-neutral-700 bg-neutral-800 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <option value="all">Todas as categorias</option>
+              <option value="all">{tx.allCategories}</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
@@ -113,7 +117,7 @@ export function TransactionFilterModal({
           {/* Status */}
           <div>
             <label className="block text-sm font-medium text-neutral-300 mb-2">
-              Status
+              {tx.colStatus}
             </label>
             <select
               value={localFilters.statusFilter}
@@ -122,10 +126,10 @@ export function TransactionFilterModal({
               }
               className="w-full h-10 rounded-md border border-neutral-700 bg-neutral-800 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <option value="all">Todos os status</option>
-              <option value="concluida">Concluída</option>
-              <option value="pendente">Pendente</option>
-              <option value="cancelada">Cancelada</option>
+              <option value="all">{tx.allStatuses}</option>
+              <option value="concluida">{t.transactionStatus.concluida}</option>
+              <option value="pendente">{t.transactionStatus.pendente}</option>
+              <option value="cancelada">{t.transactionStatus.cancelada}</option>
             </select>
           </div>
 
@@ -134,7 +138,7 @@ export function TransactionFilterModal({
             <label className="block text-sm font-medium text-neutral-300 mb-2">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Período
+                {tx.period}
               </div>
             </label>
             <div className="flex items-center gap-2">
@@ -146,7 +150,7 @@ export function TransactionFilterModal({
                 placeholder="dd/mm/aaaa"
                 className="flex-1"
               />
-              <span className="text-neutral-500 text-sm">até</span>
+              <span className="text-neutral-500 text-sm">{tx.dateRangeSeparator}</span>
               <DateInput
                 value={localFilters.endDate}
                 onChange={(value) =>
@@ -163,12 +167,12 @@ export function TransactionFilterModal({
             {hasActiveFilters && (
               <Button variant="outline" onClick={handleClear} className="flex-1">
                 <X className="h-4 w-4 mr-2" />
-                Limpar
+                {tx.clearFiltersButton}
               </Button>
             )}
             <Button onClick={handleApply} className="flex-1">
               <Filter className="h-4 w-4 mr-2" />
-              Aplicar Filtros
+              {tx.applyFilters}
             </Button>
           </div>
         </div>

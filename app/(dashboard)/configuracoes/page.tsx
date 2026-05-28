@@ -12,7 +12,8 @@ import { useUser } from '@/lib/hooks/use-user'
 import { Skeleton } from '@/components/shared/skeleton'
 import { createClient } from '@/lib/supabase/client'
 import { fullNameSchema } from '@/lib/utils/validation'
-import { User, AlertTriangle, Coins } from 'lucide-react'
+import { usePreferences, SUPPORTED_LOCALES, SUPPORTED_CURRENCIES } from '@/lib/contexts/preferences-context'
+import { User, AlertTriangle, Coins, Languages } from 'lucide-react'
 
 const profileFormSchema = z.object({
   full_name: fullNameSchema,
@@ -45,6 +46,7 @@ function SkeletonSettingsCard() {
 
 export default function SettingsPage() {
   const { user, loading } = useUser()
+  const { t, locale, currency, setLocale, setCurrency } = usePreferences()
   const [profileLoading, setProfileLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState<
@@ -97,13 +99,13 @@ export default function SettingsPage() {
     if (error) {
       setFeedback({
         type: 'error',
-        message: 'Não foi possível salvar. Tente novamente.',
+        message: t.settings.saveError,
       })
       return
     }
 
     reset({ full_name: fullName })
-    setFeedback({ type: 'success', message: 'Perfil atualizado com sucesso.' })
+    setFeedback({ type: 'success', message: t.settings.profileSaved })
   }
 
   if (loading || (user && profileLoading)) {
@@ -131,9 +133,9 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Configurações</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{t.settings.title}</h1>
         <p className="text-neutral-400 text-sm mt-1">
-          Gerencie suas preferências e informações pessoais
+          {t.settings.subtitle}
         </p>
       </div>
 
@@ -143,7 +145,7 @@ export default function SettingsPage() {
             <div className="rounded-lg bg-blue-500/15 p-1.5">
               <User className="h-4 w-4 text-blue-400" />
             </div>
-            <CardTitle className="text-base sm:text-lg">Perfil</CardTitle>
+            <CardTitle className="text-base sm:text-lg">{t.settings.profile}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
@@ -155,7 +157,7 @@ export default function SettingsPage() {
             className="space-y-4"
           >
             <div>
-              <Label htmlFor="email" className="text-neutral-300">E-mail</Label>
+              <Label htmlFor="email" className="text-neutral-300">{t.settings.email}</Label>
               <Input
                 id="email"
                 type="email"
@@ -164,19 +166,19 @@ export default function SettingsPage() {
                 className="bg-neutral-800/50 mt-1.5"
               />
               <p className="text-xs text-neutral-500 mt-1.5">
-                O e-mail não pode ser alterado
+                {t.settings.emailHint}
               </p>
             </div>
 
             <div>
               <Label htmlFor="full_name" className="text-neutral-300">
-                Nome Completo
+                {t.settings.fullName}
               </Label>
               <Input
                 id="full_name"
                 type="text"
                 autoComplete="name"
-                placeholder="Seu nome completo"
+                placeholder={t.settings.fullNamePlaceholder}
                 disabled={saving}
                 className="mt-1.5"
                 {...register('full_name')}
@@ -187,7 +189,7 @@ export default function SettingsPage() {
                 </p>
               ) : (
                 <p className="text-xs text-neutral-500 mt-1.5">
-                  Informe seu nome e sobrenome
+                  {t.settings.fullNameHint}
                 </p>
               )}
             </div>
@@ -206,7 +208,7 @@ export default function SettingsPage() {
 
             <div className="pt-2">
               <Button type="submit" disabled={saving || !isDirty}>
-                {saving ? 'Salvando...' : 'Salvar Alterações'}
+                {saving ? t.common.saving : t.common.saveChanges}
               </Button>
             </div>
           </form>
@@ -219,28 +221,49 @@ export default function SettingsPage() {
             <div className="rounded-lg bg-orange-500/15 p-1.5">
               <Coins className="h-4 w-4 text-orange-400" />
             </div>
-            <CardTitle className="text-base sm:text-lg">Preferências</CardTitle>
+            <CardTitle className="text-base sm:text-lg">{t.settings.preferences}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-4 px-4 sm:px-6">
           <div>
-            <Label htmlFor="currency" className="text-neutral-300">Moeda Padrão</Label>
+            <Label htmlFor="language" className="text-neutral-300 flex items-center gap-1.5">
+              <Languages className="h-3.5 w-3.5 text-neutral-400" />
+              {t.settings.language}
+            </Label>
             <select
-              id="currency"
+              id="language"
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as (typeof SUPPORTED_LOCALES)[number])}
               className="flex h-10 w-full rounded-md border border-input bg-neutral-800/50 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1.5"
-              disabled
             >
-              <option value="BRL">Real (R$)</option>
-              <option value="USD">Dólar ($)</option>
-              <option value="EUR">Euro (€)</option>
+              {SUPPORTED_LOCALES.map((code) => (
+                <option key={code} value={code}>
+                  {t.languages[code]}
+                </option>
+              ))}
             </select>
             <p className="text-xs text-neutral-500 mt-1.5">
-              Funcionalidade em desenvolvimento
+              {t.settings.languageHint}
             </p>
           </div>
 
-          <div className="pt-2">
-            <Button disabled>Salvar Preferências</Button>
+          <div>
+            <Label htmlFor="currency" className="text-neutral-300">{t.settings.defaultCurrency}</Label>
+            <select
+              id="currency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-neutral-800/50 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1.5"
+            >
+              {SUPPORTED_CURRENCIES.map((code) => (
+                <option key={code} value={code}>
+                  {t.currencies[code]}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-neutral-500 mt-1.5">
+              {t.settings.currencyHint}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -251,18 +274,18 @@ export default function SettingsPage() {
             <div className="rounded-lg bg-red-500/15 p-1.5">
               <AlertTriangle className="h-4 w-4 text-red-400" />
             </div>
-            <CardTitle className="text-base sm:text-lg text-red-400">Zona de Perigo</CardTitle>
+            <CardTitle className="text-base sm:text-lg text-red-400">{t.settings.dangerZone}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
           <p className="text-sm text-neutral-400 mb-4">
-            Ações irreversíveis que afetarão permanentemente sua conta.
+            {t.settings.dangerZoneDesc}
           </p>
           <Button variant="destructive" disabled>
-            Excluir Conta
+            {t.settings.deleteAccount}
           </Button>
           <p className="text-xs text-neutral-500 mt-2">
-            Funcionalidade em desenvolvimento
+            {t.common.inDevelopment}
           </p>
         </CardContent>
       </Card>

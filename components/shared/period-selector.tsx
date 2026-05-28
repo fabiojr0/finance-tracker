@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils/cn'
+import { usePreferences } from '@/lib/contexts/preferences-context'
 
 export type PeriodKey =
   | 'all'
@@ -12,23 +13,14 @@ export type PeriodKey =
   | 'last-12-months'
   | 'this-year'
 
-interface PeriodOption {
-  key: PeriodKey
-  label: string
-  shortLabel: string
-}
-
-const PERIOD_OPTIONS: PeriodOption[] = [
-  { key: 'this-month', label: 'Este mês', shortLabel: 'Este mês' },
-  { key: 'last-month', label: 'Mês anterior', shortLabel: 'Mês ant.' },
-  { key: 'last-3-months', label: 'Últimos 3 meses', shortLabel: '3 meses' },
-  { key: 'last-6-months', label: 'Últimos 6 meses', shortLabel: '6 meses' },
-  { key: 'last-12-months', label: 'Últimos 12 meses', shortLabel: '12 meses' },
-  { key: 'this-year', label: 'Este ano', shortLabel: 'Este ano' },
+const PERIOD_KEYS: PeriodKey[] = [
+  'this-month',
+  'last-month',
+  'last-3-months',
+  'last-6-months',
+  'last-12-months',
+  'this-year',
 ]
-
-const ALL_OPTION: PeriodOption = { key: 'all', label: 'Todos', shortLabel: 'Todos' }
-const CUSTOM_OPTION: PeriodOption = { key: 'custom', label: 'Personalizado', shortLabel: 'Person.' }
 
 interface PeriodSelectorProps {
   selected: PeriodKey
@@ -86,28 +78,41 @@ export function getPreviousPeriodRange(period: PeriodKey): { startDate: Date; en
 }
 
 export function PeriodSelector({ selected, onChange, showAll = false, showCustom = false, className }: PeriodSelectorProps) {
-  const options = [
-    ...(showCustom ? [CUSTOM_OPTION] : []),
-    ...(showAll ? [ALL_OPTION] : []),
-    ...PERIOD_OPTIONS,
+  const { t } = usePreferences()
+
+  const labels: Record<PeriodKey, { label: string; shortLabel: string }> = {
+    'this-month': { label: t.statistics.periodThisMonth, shortLabel: t.statistics.periodThisMonthShort },
+    'last-month': { label: t.statistics.periodLastMonth, shortLabel: t.statistics.periodLastMonthShort },
+    'last-3-months': { label: t.statistics.periodLast3Months, shortLabel: t.statistics.periodLast3MonthsShort },
+    'last-6-months': { label: t.statistics.periodLast6Months, shortLabel: t.statistics.periodLast6MonthsShort },
+    'last-12-months': { label: t.statistics.periodLast12Months, shortLabel: t.statistics.periodLast12MonthsShort },
+    'this-year': { label: t.statistics.periodThisYear, shortLabel: t.statistics.periodThisYearShort },
+    all: { label: t.statistics.periodAll, shortLabel: t.statistics.periodAllShort },
+    custom: { label: t.statistics.periodCustom, shortLabel: t.statistics.periodCustomShort },
+  }
+
+  const keys: PeriodKey[] = [
+    ...(showCustom ? (['custom'] as PeriodKey[]) : []),
+    ...(showAll ? (['all'] as PeriodKey[]) : []),
+    ...PERIOD_KEYS,
   ]
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
       <div className="flex items-center gap-1 bg-neutral-900/80 border border-neutral-800 rounded-xl p-1 overflow-x-auto scrollbar-hide">
-        {options.map((option) => (
+        {keys.map((key) => (
           <button
-            key={option.key}
-            onClick={() => onChange(option.key)}
+            key={key}
+            onClick={() => onChange(key)}
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200',
-              selected === option.key
+              selected === key
                 ? 'bg-primary/20 text-primary shadow-sm shadow-primary/10'
                 : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
             )}
           >
-            <span className="sm:hidden">{option.shortLabel}</span>
-            <span className="hidden sm:inline">{option.label}</span>
+            <span className="sm:hidden">{labels[key].shortLabel}</span>
+            <span className="hidden sm:inline">{labels[key].label}</span>
           </button>
         ))}
       </div>

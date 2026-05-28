@@ -14,30 +14,23 @@ import { PeriodSelector, getDateRange, getPreviousPeriodRange, PeriodKey } from 
 import { useFinance } from '@/lib/contexts/finance-context'
 import { useUser } from '@/lib/hooks/use-user'
 import { createClient } from '@/lib/supabase/client'
-import { formatCurrency } from '@/lib/utils/format-currency'
+import { usePreferences } from '@/lib/contexts/preferences-context'
 import { formatDate } from '@/lib/utils/format-date'
 import Link from 'next/link'
 
-function getGreeting() {
-  const hour = new Date().getHours()
-  if (hour < 12) return 'Bom dia'
-  if (hour < 18) return 'Boa tarde'
-  return 'Boa noite'
+function capitalize(value: string, localeTag: string) {
+  return value.charAt(0).toLocaleUpperCase(localeTag) + value.slice(1).toLocaleLowerCase(localeTag)
 }
 
-function capitalize(value: string) {
-  return value.charAt(0).toLocaleUpperCase('pt-BR') + value.slice(1).toLocaleLowerCase('pt-BR')
-}
-
-function getDisplayName(fullName?: string | null, email?: string | null) {
+function getDisplayName(localeTag: string, fullName?: string | null, email?: string | null) {
   const trimmed = fullName?.trim()
   if (trimmed) {
     const firstName = trimmed.split(/\s+/)[0]
-    if (firstName) return capitalize(firstName)
+    if (firstName) return capitalize(firstName, localeTag)
   }
   if (email) {
     const name = email.split('@')[0]
-    if (name) return capitalize(name)
+    if (name) return capitalize(name, localeTag)
   }
   return ''
 }
@@ -45,8 +38,16 @@ function getDisplayName(fullName?: string | null, email?: string | null) {
 export default function DashboardPage() {
   const { transactions, transactionsLoading: loading } = useFinance()
   const { user } = useUser()
+  const { t, formatMoney, localeTag } = usePreferences()
   const [fullName, setFullName] = useState<string | null>(null)
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>('custom')
+
+  const greeting = (() => {
+    const hour = new Date().getHours()
+    if (hour < 12) return t.dashboard.greetingMorning
+    if (hour < 18) return t.dashboard.greetingAfternoon
+    return t.dashboard.greetingEvening
+  })()
 
   useEffect(() => {
     if (!user) return
@@ -187,10 +188,10 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            {getGreeting()}, {getDisplayName(fullName, user?.email)}
+            {greeting}, {getDisplayName(localeTag, fullName, user?.email)}
           </h2>
           <p className="text-sm sm:text-base text-neutral-400 mt-1">
-            Aqui está o resumo das suas finanças
+            {t.dashboard.welcomeSubtitle}
           </p>
         </div>
         <PeriodSelector selected={selectedPeriod} onChange={setSelectedPeriod} showCustom />
@@ -199,28 +200,28 @@ export default function DashboardPage() {
       {/* Stats Cards */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         <StatsCard
-          title="Saldo Total"
+          title={t.dashboard.totalBalance}
           value={stats.balance}
           icon={Wallet}
           variant="default"
           trend={stats.trends.balance}
         />
         <StatsCard
-          title="Receitas"
+          title={t.dashboard.income}
           value={stats.income}
           icon={TrendingUp}
           variant="income"
           trend={stats.trends.income}
         />
         <StatsCard
-          title="Despesas"
+          title={t.dashboard.expenses}
           value={stats.expenses}
           icon={TrendingDown}
           variant="expense"
           trend={stats.trends.expenses}
         />
         <StatsCard
-          title="Investimentos"
+          title={t.dashboard.investments}
           value={stats.investments}
           icon={LineChart}
           variant="investment"
@@ -251,16 +252,16 @@ export default function DashboardPage() {
         <CardHeader className="pb-3 px-4 sm:px-6">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <CardTitle className="text-base sm:text-lg">Transações Recentes</CardTitle>
+              <CardTitle className="text-base sm:text-lg">{t.dashboard.recentTransactions}</CardTitle>
               <p className="text-xs sm:text-sm text-neutral-500 mt-0.5 sm:mt-1 truncate">
-                Últimas movimentações
+                {t.dashboard.latestMovements}
               </p>
             </div>
             <Link
               href="/transacoes"
               className="flex items-center gap-1.5 text-primary hover:text-primary-400 text-sm font-medium transition-colors flex-shrink-0 group/link"
             >
-              <span className="hidden sm:inline">Ver todas</span>
+              <span className="hidden sm:inline">{t.dashboard.viewAll}</span>
               <ArrowRight className="h-4 w-4 transition-transform group-hover/link:translate-x-0.5" />
             </Link>
           </div>
@@ -268,12 +269,12 @@ export default function DashboardPage() {
         <CardContent className="pt-0 px-4 sm:px-6">
           {recentTransactions.length === 0 ? (
             <EmptyState
-              title="Nenhuma transação ainda"
-              description="Comece adicionando sua primeira transação para acompanhar suas finanças."
+              title={t.dashboard.noTransactionsYet}
+              description={t.dashboard.noTransactionsDescription}
               icon={<Wallet className="h-12 w-12" />}
               action={
                 <Link href="/transacoes">
-                  <Button>Adicionar Transação</Button>
+                  <Button>{t.dashboard.addTransaction}</Button>
                 </Link>
               }
             />
@@ -313,7 +314,7 @@ export default function DashboardPage() {
                             <span className="truncate">{transaction.category.name}</span>
                           </>
                         ) : (
-                          'Sem categoria'
+                          t.dashboard.noCategory
                         )}
                         <span className="hidden sm:inline text-neutral-600">•</span>
                         <span className="hidden sm:inline">{formatDate(transaction.date)}</span>
@@ -330,7 +331,7 @@ export default function DashboardPage() {
                     }`}
                   >
                     {transaction.type === 'receita' ? '+ ' : '- '}
-                    {formatCurrency(transaction.amount)}
+                    {formatMoney(transaction.amount)}
                   </span>
                 </div>
               ))}

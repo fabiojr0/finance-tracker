@@ -12,7 +12,8 @@ import {
   getDateRange,
   PeriodKey,
 } from '@/components/shared/period-selector'
-import { formatCurrency } from '@/lib/utils/format-currency'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { aiReportDict } from '@/lib/i18n/sections/ai-report'
 import { cn } from '@/lib/utils/cn'
 import {
   Sparkles,
@@ -84,15 +85,17 @@ interface SavedReportFull {
   created_at: string
 }
 
-const PERIOD_LABELS: Record<PeriodKey, string> = {
-  'all': 'Todos os períodos',
-  'custom': 'Personalizado',
-  'this-month': 'Este mês',
-  'last-month': 'Mês anterior',
-  'last-3-months': 'Últimos 3 meses',
-  'last-6-months': 'Últimos 6 meses',
-  'last-12-months': 'Últimos 12 meses',
-  'this-year': 'Este ano',
+type AiReportText = { [K in keyof (typeof aiReportDict)['pt']]: string }
+
+const PERIOD_LABEL_KEYS: Record<PeriodKey, keyof AiReportText> = {
+  'all': 'periodAll',
+  'custom': 'periodCustom',
+  'this-month': 'periodThisMonth',
+  'last-month': 'periodLastMonth',
+  'last-3-months': 'periodLast3Months',
+  'last-6-months': 'periodLast6Months',
+  'last-12-months': 'periodLast12Months',
+  'this-year': 'periodThisYear',
 }
 
 function toISO(date: Date): string {
@@ -117,10 +120,10 @@ function formatDate(iso: string): string {
   return `${d}/${m}/${y}`
 }
 
-function formatDateTime(iso: string): string {
+function formatDateTime(iso: string, localeTag: string): string {
   const dt = new Date(iso)
   if (Number.isNaN(dt.getTime())) return iso
-  return dt.toLocaleString('pt-BR', {
+  return dt.toLocaleString(localeTag, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -131,6 +134,8 @@ function formatDateTime(iso: string): string {
 
 export default function AIReportPage() {
   const confirm = useConfirm()
+  const { locale, formatMoney, localeTag } = usePreferences()
+  const t = aiReportDict[locale]
   const [period, setPeriod] = useState<PeriodKey>('this-month')
   const [customStart, setCustomStart] = useState(firstDayOfMonthISO())
   const [customEnd, setCustomEnd] = useState(todayISO())
@@ -163,17 +168,17 @@ export default function AIReportPage() {
       const res = await fetch('/api/ai-report/saved')
       const json = await res.json()
       if (!res.ok) {
-        toast.error(json?.error || 'Erro ao carregar relatórios salvos')
+        toast.error(json?.error || t.loadSavedError)
         return
       }
       setSavedReports((json.reports as SavedReportListItem[]) ?? [])
     } catch (err) {
       console.error(err)
-      toast.error('Falha ao carregar relatórios salvos')
+      toast.error(t.loadSavedFailed)
     } finally {
       setLoadingSaved(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     loadSavedReports()
@@ -181,12 +186,12 @@ export default function AIReportPage() {
 
   const handleGenerate = async () => {
     if (!resolvedRange) {
-      toast.error('Selecione um período válido')
+      toast.error(t.selectValidPeriod)
       return
     }
 
     if (resolvedRange.startDate > resolvedRange.endDate) {
-      toast.error('A data inicial deve ser anterior à final')
+      toast.error(t.startBeforeEnd)
       return
     }
 
@@ -202,7 +207,7 @@ export default function AIReportPage() {
         body: JSON.stringify({
           startDate: resolvedRange.startDate,
           endDate: resolvedRange.endDate,
-          periodLabel: PERIOD_LABELS[period],
+          periodLabel: t[PERIOD_LABEL_KEYS[period]],
           customPrompt: customPrompt.trim() || undefined,
         }),
       })
@@ -210,7 +215,7 @@ export default function AIReportPage() {
       const json = await res.json()
 
       if (!res.ok) {
-        const message = json?.error || 'Erro ao gerar relatório'
+        const message = json?.error || t.generateError
         setError(message)
         toast.error(message)
         return
@@ -219,11 +224,11 @@ export default function AIReportPage() {
       const response = json as ReportResponse
       setData(response)
       setActiveSavedId(response.id)
-      toast.success('Relatório gerado e salvo!')
+      toast.success(t.reportGenerated)
       loadSavedReports()
     } catch (err) {
       console.error(err)
-      const message = 'Falha ao se comunicar com o servidor.'
+      const message = t.serverError
       setError(message)
       toast.error(message)
     } finally {
@@ -239,7 +244,7 @@ export default function AIReportPage() {
       const res = await fetch(`/api/ai-report/saved/${id}`)
       const json = await res.json()
       if (!res.ok) {
-        toast.error(json?.error || 'Erro ao abrir relatório')
+        toast.error(json?.error || t.openError)
         return
       }
       const full = json as SavedReportFull
@@ -255,7 +260,7 @@ export default function AIReportPage() {
       }
     } catch (err) {
       console.error(err)
-      toast.error('Falha ao abrir relatório')
+      toast.error(t.openFailed)
     } finally {
       setOpeningId(null)
     }
@@ -263,17 +268,17 @@ export default function AIReportPage() {
 
   const handleDeleteSaved = async (item: SavedReportListItem) => {
     const ok = await confirm({
-      title: 'Excluir relatório?',
+      title: t.deleteTitle,
       description: (
         <>
-          O relatório de{' '}
+          {t.deletePrefix}{' '}
           <strong>
-            {formatDate(item.start_date)} a {formatDate(item.end_date)}
+            {formatDate(item.start_date)} {t.rangeSeparator} {formatDate(item.end_date)}
           </strong>{' '}
-          gerado em {formatDateTime(item.created_at)} será removido permanentemente.
+          {t.generatedAt.toLowerCase()} {formatDateTime(item.created_at, localeTag)} {t.deleteSuffix}
         </>
       ),
-      confirmLabel: 'Excluir',
+      confirmLabel: t.deleteConfirmLabel,
       variant: 'destructive',
     })
     if (!ok) return
@@ -285,10 +290,10 @@ export default function AIReportPage() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(json?.error || 'Erro ao excluir relatório')
+        toast.error(json?.error || t.deleteError)
         return
       }
-      toast.success('Relatório excluído')
+      toast.success(t.reportDeleted)
       setSavedReports((prev) => prev.filter((r) => r.id !== item.id))
       if (activeSavedId === item.id) {
         setData(null)
@@ -296,7 +301,7 @@ export default function AIReportPage() {
       }
     } catch (err) {
       console.error(err)
-      toast.error('Falha ao excluir relatório')
+      toast.error(t.deleteFailed)
     } finally {
       setDeletingId(null)
     }
@@ -315,18 +320,17 @@ export default function AIReportPage() {
             <Sparkles className="h-5 w-5 text-purple-400" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            Relatório com IA
+            {t.title}
           </h1>
         </div>
         <p className="text-neutral-400 text-sm">
-          Escolha um período e gere uma análise inteligente das suas finanças,
-          baseada nas transações, valores e categorias.
+          {t.subtitle}
         </p>
       </div>
 
       <Card className="overflow-hidden">
         <CardHeader className="px-4 sm:px-6">
-          <CardTitle className="text-base sm:text-lg">Período de análise</CardTitle>
+          <CardTitle className="text-base sm:text-lg">{t.analysisPeriod}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 px-4 sm:px-6">
           <PeriodSelector
@@ -339,7 +343,7 @@ export default function AIReportPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="start" className="text-neutral-300">
-                  Data inicial
+                  {t.startDate}
                 </Label>
                 <div className="mt-1.5">
                   <DateInput value={customStart} onChange={setCustomStart} />
@@ -347,7 +351,7 @@ export default function AIReportPage() {
               </div>
               <div>
                 <Label htmlFor="end" className="text-neutral-300">
-                  Data final
+                  {t.endDate}
                 </Label>
                 <div className="mt-1.5">
                   <DateInput value={customEnd} onChange={setCustomEnd} />
@@ -358,7 +362,7 @@ export default function AIReportPage() {
 
           <div>
             <Label htmlFor="prompt" className="text-neutral-300">
-              Instruções adicionais (opcional)
+              {t.additionalInstructions}
             </Label>
             <textarea
               id="prompt"
@@ -366,20 +370,20 @@ export default function AIReportPage() {
               onChange={(e) => setCustomPrompt(e.target.value)}
               maxLength={500}
               rows={3}
-              placeholder="Ex.: foque nos gastos com alimentação, ou compare com o mês anterior."
+              placeholder={t.promptPlaceholder}
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1.5 resize-none"
               disabled={loading}
             />
             <p className="text-xs text-neutral-500 mt-1.5">
-              {customPrompt.length}/500 caracteres
+              {customPrompt.length}/500 {t.charactersCount}
             </p>
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-1">
             <p className="text-xs text-neutral-500">
               {resolvedRange
-                ? `${resolvedRange.startDate} a ${resolvedRange.endDate}`
-                : 'Período não definido'}
+                ? `${resolvedRange.startDate} ${t.rangeSeparator} ${resolvedRange.endDate}`
+                : t.periodNotDefined}
             </p>
             <Button
               onClick={handleGenerate}
@@ -389,12 +393,12 @@ export default function AIReportPage() {
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Analisando...
+                  {t.analyzing}
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4" />
-                  Gerar relatório
+                  {t.generateReport}
                 </>
               )}
             </Button>
@@ -408,12 +412,10 @@ export default function AIReportPage() {
             <div className="flex flex-col items-center text-center gap-3">
               <Loader2 className="h-8 w-8 text-purple-400 animate-spin" />
               <p className="text-neutral-300 text-sm font-medium">
-                A IA está analisando suas transações
+                {t.loadingTitle}
               </p>
               <p className="text-xs text-neutral-500 max-w-sm">
-                Estamos consolidando suas receitas, despesas, investimentos e
-                categorias para gerar uma análise personalizada. Isso pode levar
-                alguns segundos.
+                {t.loadingDescription}
               </p>
             </div>
           </CardContent>
@@ -427,7 +429,7 @@ export default function AIReportPage() {
               <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-red-400">
-                  Não foi possível gerar o relatório
+                  {t.errorTitle}
                 </p>
                 <p className="text-xs text-neutral-400 mt-1">{error}</p>
               </div>
@@ -436,7 +438,15 @@ export default function AIReportPage() {
         </Card>
       )}
 
-      {data && <ReportResult data={data} onClose={handleCloseReport} />}
+      {data && (
+        <ReportResult
+          data={data}
+          onClose={handleCloseReport}
+          t={t}
+          formatMoney={formatMoney}
+          localeTag={localeTag}
+        />
+      )}
 
       <SavedReportsList
         items={savedReports}
@@ -446,6 +456,9 @@ export default function AIReportPage() {
         deletingId={deletingId}
         onOpen={handleOpenSaved}
         onDelete={handleDeleteSaved}
+        t={t}
+        formatMoney={formatMoney}
+        localeTag={localeTag}
       />
     </div>
   )
@@ -459,6 +472,9 @@ function SavedReportsList({
   deletingId,
   onOpen,
   onDelete,
+  t,
+  formatMoney,
+  localeTag,
 }: {
   items: SavedReportListItem[]
   loading: boolean
@@ -467,6 +483,9 @@ function SavedReportsList({
   deletingId: string | null
   onOpen: (id: string) => void
   onDelete: (item: SavedReportListItem) => void
+  t: AiReportText
+  formatMoney: (amount: number) => string
+  localeTag: string
 }) {
   return (
     <Card>
@@ -477,12 +496,13 @@ function SavedReportsList({
               <History className="h-4 w-4 text-blue-400" />
             </div>
             <CardTitle className="text-base sm:text-lg">
-              Relatórios salvos
+              {t.savedReports}
             </CardTitle>
           </div>
           {!loading && items.length > 0 && (
             <span className="text-xs text-neutral-500">
-              {items.length} {items.length === 1 ? 'relatório' : 'relatórios'}
+              {items.length}{' '}
+              {items.length === 1 ? t.savedReportSingular : t.savedReportPlural}
             </span>
           )}
         </div>
@@ -494,7 +514,7 @@ function SavedReportsList({
           </div>
         ) : items.length === 0 ? (
           <p className="text-sm text-neutral-500 text-center py-6">
-            Nenhum relatório salvo ainda. Gere o primeiro acima.
+            {t.noSavedReports}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -516,38 +536,38 @@ function SavedReportsList({
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-medium text-neutral-100">
-                          {item.period_label || 'Personalizado'}
+                          {item.period_label || t.custom}
                         </span>
                         {isActive && (
                           <span className="inline-flex items-center rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 px-2 py-0.5 text-[10px] font-medium">
-                            Visualizando
+                            {t.viewing}
                           </span>
                         )}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-400">
                         <span className="inline-flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {formatDate(item.start_date)} a {formatDate(item.end_date)}
+                          {formatDate(item.start_date)} {t.rangeSeparator} {formatDate(item.end_date)}
                         </span>
                         <span className="text-neutral-500">
-                          Gerado em {formatDateTime(item.created_at)}
+                          {t.generatedAt} {formatDateTime(item.created_at, localeTag)}
                         </span>
                       </div>
                       <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-neutral-500">
                         <span>
-                          Receitas:{' '}
+                          {t.income}:{' '}
                           <span className="text-emerald-400 tabular-nums">
-                            {formatCurrency(item.summary?.income ?? 0)}
+                            {formatMoney(item.summary?.income ?? 0)}
                           </span>
                         </span>
                         <span>
-                          Despesas:{' '}
+                          {t.expenses}:{' '}
                           <span className="text-red-400 tabular-nums">
-                            {formatCurrency(item.summary?.expenses ?? 0)}
+                            {formatMoney(item.summary?.expenses ?? 0)}
                           </span>
                         </span>
                         <span>
-                          Saldo:{' '}
+                          {t.balance}:{' '}
                           <span
                             className={cn(
                               'tabular-nums',
@@ -556,11 +576,11 @@ function SavedReportsList({
                                 : 'text-red-400'
                             )}
                           >
-                            {formatCurrency(item.summary?.balance ?? 0)}
+                            {formatMoney(item.summary?.balance ?? 0)}
                           </span>
                         </span>
                         <span>
-                          {item.summary?.transactionCount ?? 0} transações
+                          {item.summary?.transactionCount ?? 0} {t.transactionsCount}
                         </span>
                       </div>
                       {item.custom_prompt && (
@@ -575,7 +595,7 @@ function SavedReportsList({
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0"
-                        title="Visualizar"
+                        title={t.view}
                         onClick={() => onOpen(item.id)}
                         disabled={isOpening || isDeleting}
                       >
@@ -590,7 +610,7 @@ function SavedReportsList({
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                        title="Excluir"
+                        title={t.deleteConfirmLabel}
                         onClick={() => onDelete(item)}
                         disabled={isDeleting || isOpening}
                       >
@@ -615,9 +635,15 @@ function SavedReportsList({
 function ReportResult({
   data,
   onClose,
+  t,
+  formatMoney,
+  localeTag,
 }: {
   data: ReportResponse
   onClose: () => void
+  t: AiReportText
+  formatMoney: (amount: number) => string
+  localeTag: string
 }) {
   const { report, summary, createdAt } = data
 
@@ -629,7 +655,7 @@ function ReportResult({
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-300">
               <span className="inline-flex items-center gap-1.5 font-medium text-neutral-100">
                 <Calendar className="h-3.5 w-3.5 text-purple-400" />
-                {formatDate(summary.period.start)} a {formatDate(summary.period.end)}
+                {formatDate(summary.period.start)} {t.rangeSeparator} {formatDate(summary.period.end)}
               </span>
               {summary.period.label && (
                 <span className="text-neutral-400">
@@ -637,7 +663,7 @@ function ReportResult({
                 </span>
               )}
               <span className="text-neutral-500">
-                · Gerado em {formatDateTime(createdAt)}
+                · {t.generatedAt} {formatDateTime(createdAt, localeTag)}
               </span>
             </div>
             <Button
@@ -645,7 +671,7 @@ function ReportResult({
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0"
-              title="Fechar relatório"
+              title={t.closeReport}
               onClick={onClose}
             >
               <X className="h-4 w-4" />
@@ -656,26 +682,26 @@ function ReportResult({
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <SummaryStat
-          label="Receitas"
-          value={formatCurrency(summary.income)}
+          label={t.income}
+          value={formatMoney(summary.income)}
           icon={TrendingUp}
           color="emerald"
         />
         <SummaryStat
-          label="Despesas"
-          value={formatCurrency(summary.expenses)}
+          label={t.expenses}
+          value={formatMoney(summary.expenses)}
           icon={TrendingDown}
           color="red"
         />
         <SummaryStat
-          label="Investimentos"
-          value={formatCurrency(summary.investments)}
+          label={t.investments}
+          value={formatMoney(summary.investments)}
           icon={PiggyBank}
           color="blue"
         />
         <SummaryStat
-          label="Saldo"
-          value={formatCurrency(summary.balance)}
+          label={t.balance}
+          value={formatMoney(summary.balance)}
           icon={Wallet}
           color={summary.balance >= 0 ? 'emerald' : 'red'}
         />
@@ -687,7 +713,7 @@ function ReportResult({
             <div className="rounded-lg bg-purple-500/15 p-1.5">
               <Sparkles className="h-4 w-4 text-purple-400" />
             </div>
-            <CardTitle className="text-base sm:text-lg">Resumo</CardTitle>
+            <CardTitle className="text-base sm:text-lg">{t.summaryLabel}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
@@ -696,11 +722,11 @@ function ReportResult({
           </p>
           <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-neutral-800">
             <Badge>
-              {summary.transactionCount} transações
+              {summary.transactionCount} {t.transactionsCount}
             </Badge>
             {summary.savingsRate !== null && (
               <Badge>
-                Taxa de poupança: {summary.savingsRate.toFixed(1)}%
+                {t.savingsRate}: {summary.savingsRate.toFixed(1)}%
               </Badge>
             )}
             {summary.period.label && (
@@ -717,7 +743,7 @@ function ReportResult({
               <div className="rounded-lg bg-amber-500/15 p-1.5">
                 <ListChecks className="h-4 w-4 text-amber-400" />
               </div>
-              <CardTitle className="text-base sm:text-lg">Destaques</CardTitle>
+              <CardTitle className="text-base sm:text-lg">{t.highlightsLabel}</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="px-4 sm:px-6">
@@ -746,7 +772,7 @@ function ReportResult({
                 <TrendingDown className="h-4 w-4 text-red-400" />
               </div>
               <CardTitle className="text-base sm:text-lg">
-                Categorias principais
+                {t.topCategoriesLabel}
               </CardTitle>
             </div>
           </CardHeader>
@@ -761,7 +787,7 @@ function ReportResult({
                     </p>
                     <div className="flex items-baseline gap-2 flex-shrink-0">
                       <span className="text-sm font-semibold text-neutral-100 tabular-nums">
-                        {formatCurrency(Number(cat.valor) || 0)}
+                        {formatMoney(Number(cat.valor) || 0)}
                       </span>
                       <span className="text-xs text-neutral-500 tabular-nums">
                         {pct.toFixed(1)}%
@@ -794,7 +820,7 @@ function ReportResult({
                 <AlertTriangle className="h-4 w-4 text-orange-400" />
               </div>
               <CardTitle className="text-base sm:text-lg">
-                Pontos de atenção
+                {t.attentionPointsLabel}
               </CardTitle>
             </div>
           </CardHeader>
@@ -822,7 +848,7 @@ function ReportResult({
                 <Lightbulb className="h-4 w-4 text-emerald-400" />
               </div>
               <CardTitle className="text-base sm:text-lg">
-                Recomendações
+                {t.recommendationsLabel}
               </CardTitle>
             </div>
           </CardHeader>

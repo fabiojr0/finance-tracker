@@ -1,5 +1,7 @@
+'use client'
+
 import { LucideIcon, TrendingUp, TrendingDown } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils/format-currency'
+import { usePreferences } from '@/lib/contexts/preferences-context'
 import { cn } from '@/lib/utils/cn'
 
 interface StatsCardProps {
@@ -20,6 +22,7 @@ export function StatsCard({
   trend,
   variant = 'default',
 }: StatsCardProps) {
+  const { t, formatMoney } = usePreferences()
   const variantStyles = {
     default: {
       gradient: 'from-orange-500/10 via-orange-500/5 to-transparent',
@@ -85,7 +88,7 @@ export function StatsCard({
         <div className="space-y-1 sm:space-y-2 min-w-0">
           <p className="text-xs sm:text-sm font-medium text-neutral-400">{title}</p>
           <p className="text-xl sm:text-2xl font-bold text-white tracking-tight truncate">
-            {formatCurrency(value)}
+            {formatMoney(value)}
           </p>
           {trend && (
             <div className="flex items-center gap-1">
@@ -105,7 +108,7 @@ export function StatsCard({
                 {trend.value}%
               </div>
               <span className="text-[10px] sm:text-xs text-neutral-500 hidden sm:inline">
-                vs. período anterior
+                {t.dashboard.vsPreviousPeriod}
               </span>
             </div>
           )}

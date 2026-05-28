@@ -10,8 +10,9 @@ import { PaymentModal } from '@/components/payments/payment-modal'
 import { AISuggestionsModal } from '@/components/payments/ai-suggestions-modal'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { useFinance } from '@/lib/contexts/finance-context'
+import { usePreferences } from '@/lib/contexts/preferences-context'
+import { paymentsDict } from '@/lib/i18n/sections/payments'
 import { TransactionWithCategory } from '@/types/transaction'
-import { formatCurrency } from '@/lib/utils/format-currency'
 import { cn } from '@/lib/utils/cn'
 import {
   Plus,
@@ -48,6 +49,8 @@ function daysBetween(aISO: string, bISO: string): number {
   const b = new Date(bISO + 'T00:00:00')
   return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24))
 }
+
+type PaymentsText = { [K in keyof (typeof paymentsDict)['pt']]: string }
 
 const PAYMENT_TYPES = new Set(['despesa', 'transferencia', 'investimento'])
 
@@ -122,6 +125,8 @@ export default function PaymentAssistantPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set())
   const confirm = useConfirm()
+  const { locale, formatMoney } = usePreferences()
+  const t = paymentsDict[locale]
 
   const today = useMemo(() => toISO(new Date()), [])
 
@@ -196,7 +201,7 @@ export default function PaymentAssistantPage() {
       toast.error(error)
       return
     }
-    toast.success('Pagamento marcado como pago')
+    toast.success(t.markedAsPaid)
   }
 
   const handleRevert = async (payment: TransactionWithCategory) => {
@@ -207,14 +212,14 @@ export default function PaymentAssistantPage() {
       toast.error(error)
       return
     }
-    toast.success('Pagamento marcado como pendente')
+    toast.success(t.markedAsPending)
   }
 
   const handleDelete = async (payment: TransactionWithCategory) => {
     const ok = await confirm({
-      title: 'Excluir pagamento?',
-      description: `"${payment.description}" será removido. Esta ação não pode ser desfeita.`,
-      confirmLabel: 'Excluir',
+      title: t.deletePaymentTitle,
+      description: `"${payment.description}" ${t.deletePaymentSuffix}`,
+      confirmLabel: t.deletePaymentConfirm,
       variant: 'destructive',
     })
     if (!ok) return
@@ -225,19 +230,18 @@ export default function PaymentAssistantPage() {
       toast.error(error)
       return
     }
-    toast.success('Pagamento excluído')
+    toast.success(t.paymentDeleted)
   }
 
   const handleDeleteSeries = async (seriesId: string, description: string) => {
     const ok = await confirm({
-      title: 'Excluir série completa?',
+      title: t.deleteSeriesTitle,
       description: (
         <>
-          Todas as ocorrências de <strong>&quot;{description}&quot;</strong> serão removidas.
-          Esta ação não pode ser desfeita.
+          {t.deleteSeriesPrefix} <strong>&quot;{description}&quot;</strong> {t.deleteSeriesSuffix}
         </>
       ),
-      confirmLabel: 'Excluir tudo',
+      confirmLabel: t.deleteSeriesConfirm,
       variant: 'destructive',
     })
     if (!ok) return
@@ -253,7 +257,7 @@ export default function PaymentAssistantPage() {
       next.delete(seriesId)
       return next
     })
-    toast.success(`${count} ocorrência(s) excluída(s)`)
+    toast.success(t.occurrencesDeleted.replace('{n}', String(count)))
   }
 
   const handleEdit = (payment: TransactionWithCategory) => {
@@ -294,11 +298,11 @@ export default function PaymentAssistantPage() {
               <Receipt className="h-5 w-5 text-cyan-400" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              Assistente de Pagamentos
+              {t.title}
             </h1>
           </div>
           <p className="text-neutral-400 text-sm mt-1">
-            Acompanhe contas a pagar, recorrências e marque o que já foi pago.
+            {t.subtitle}
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
@@ -308,43 +312,43 @@ export default function PaymentAssistantPage() {
             className="gap-2"
           >
             <Sparkles className="h-4 w-4 text-purple-400" />
-            <span className="hidden sm:inline">Sugerir com IA</span>
-            <span className="sm:hidden">IA</span>
+            <span className="hidden sm:inline">{t.suggestWithAI}</span>
+            <span className="sm:hidden">{t.ai}</span>
           </Button>
           <Button onClick={handleNew} className="gap-2">
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Novo pagamento</span>
-            <span className="sm:hidden">Novo</span>
+            <span className="hidden sm:inline">{t.newPayment}</span>
+            <span className="sm:hidden">{t.newShort}</span>
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          label="A pagar"
-          value={formatCurrency(stats.totalPending)}
-          meta={`${stats.pendingCount} item(ns)`}
+          label={t.statToPay}
+          value={formatMoney(stats.totalPending)}
+          meta={`${stats.pendingCount} ${t.itemsCount}`}
           icon={Wallet}
           color="cyan"
         />
         <StatCard
-          label="Vencidos"
-          value={formatCurrency(stats.totalOverdue)}
-          meta={`${stats.overdueCount} item(ns)`}
+          label={t.statOverdue}
+          value={formatMoney(stats.totalOverdue)}
+          meta={`${stats.overdueCount} ${t.itemsCount}`}
           icon={AlertTriangle}
           color="red"
         />
         <StatCard
-          label="Próximos 7 dias"
-          value={formatCurrency(stats.totalUpcomingWeek)}
-          meta={`${stats.upcomingWeekCount} item(ns)`}
+          label={t.statNext7Days}
+          value={formatMoney(stats.totalUpcomingWeek)}
+          meta={`${stats.upcomingWeekCount} ${t.itemsCount}`}
           icon={Clock}
           color="orange"
         />
         <StatCard
-          label="Pagos (período)"
-          value={formatCurrency(stats.totalPaid)}
-          meta={`${stats.paidCount} item(ns)`}
+          label={t.statPaidPeriod}
+          value={formatMoney(stats.totalPaid)}
+          meta={`${stats.paidCount} ${t.itemsCount}`}
           icon={CheckCircle2}
           color="emerald"
         />
@@ -357,7 +361,7 @@ export default function PaymentAssistantPage() {
               <Calendar className="h-4 w-4 text-cyan-400" />
             </div>
             <CardTitle className="text-base sm:text-lg">
-              Pendentes ({pending.length})
+              {t.pending} ({pending.length})
             </CardTitle>
           </div>
         </CardHeader>
@@ -365,8 +369,8 @@ export default function PaymentAssistantPage() {
           {pendingGroups.length === 0 ? (
             <EmptyMessage
               icon={CheckCircle2}
-              title="Tudo em dia!"
-              description="Nenhum pagamento pendente. Use o botão acima para agendar ou pedir sugestões à IA."
+              title={t.allUpToDateTitle}
+              description={t.allUpToDateDescription}
             />
           ) : (
             <ul className="space-y-2">
@@ -381,6 +385,8 @@ export default function PaymentAssistantPage() {
                       onMarkPaid={() => handleMarkAsPaid(g.tx)}
                       onEdit={() => handleEdit(g.tx)}
                       onDelete={() => handleDelete(g.tx)}
+                      t={t}
+                      formatMoney={formatMoney}
                     />
                   </li>
                 ) : (
@@ -399,6 +405,8 @@ export default function PaymentAssistantPage() {
                     onDeleteSeries={() =>
                       handleDeleteSeries(g.seriesId, g.rep.description)
                     }
+                    t={t}
+                    formatMoney={formatMoney}
                   />
                 )
               )}
@@ -415,7 +423,7 @@ export default function PaymentAssistantPage() {
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" />
               </div>
               <CardTitle className="text-base sm:text-lg">
-                Pagos ({paid.length})
+                {t.paid} ({paid.length})
               </CardTitle>
             </div>
             <PeriodSelector selected={period} onChange={setPeriod} />
@@ -425,8 +433,8 @@ export default function PaymentAssistantPage() {
           {paidGroups.length === 0 ? (
             <EmptyMessage
               icon={Receipt}
-              title="Nenhum pagamento concluído no período"
-              description="Marque pagamentos como pagos para acompanhar o histórico."
+              title={t.noPaidTitle}
+              description={t.noPaidDescription}
             />
           ) : (
             <ul className="space-y-2">
@@ -441,6 +449,8 @@ export default function PaymentAssistantPage() {
                       onRevert={() => handleRevert(g.tx)}
                       onEdit={() => handleEdit(g.tx)}
                       onDelete={() => handleDelete(g.tx)}
+                      t={t}
+                      formatMoney={formatMoney}
                     />
                   </li>
                 ) : (
@@ -459,6 +469,8 @@ export default function PaymentAssistantPage() {
                     onDeleteSeries={() =>
                       handleDeleteSeries(g.seriesId, g.rep.description)
                     }
+                    t={t}
+                    formatMoney={formatMoney}
                   />
                 )
               )}
@@ -545,6 +557,8 @@ interface SeriesGroupProps {
   onEdit: (p: TransactionWithCategory) => void
   onDelete: (p: TransactionWithCategory) => void
   onDeleteSeries: () => void
+  t: PaymentsText
+  formatMoney: (amount: number) => string
 }
 
 function SeriesGroup({
@@ -559,6 +573,8 @@ function SeriesGroup({
   onEdit,
   onDelete,
   onDeleteSeries,
+  t,
+  formatMoney,
 }: SeriesGroupProps) {
   const { rep, others, total, seriesId } = group
   const isSeriesUpdating = updatingId === seriesId
@@ -576,6 +592,8 @@ function SeriesGroup({
         onDelete={() => onDelete(rep)}
         seriesBadge={{ total, expanded, onToggle }}
         bare
+        t={t}
+        formatMoney={formatMoney}
       />
 
       {expanded && others.length > 0 && (
@@ -594,13 +612,15 @@ function SeriesGroup({
                   onDelete={() => onDelete(p)}
                   compact
                   bare
+                  t={t}
+                  formatMoney={formatMoney}
                 />
               </li>
             ))}
           </ul>
           <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 border-t border-neutral-800/60 bg-neutral-900/40">
             <p className="text-[11px] text-neutral-500">
-              Série recorrente • {total} ocorrências
+              {t.recurringSeries} • {total} {t.occurrences}
             </p>
             <button
               type="button"
@@ -609,7 +629,7 @@ function SeriesGroup({
               className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md text-red-400 hover:text-red-300 hover:bg-red-500/10 disabled:opacity-50 transition-colors"
             >
               <Trash2 className="h-3 w-3" />
-              Excluir série completa
+              {t.deleteFullSeries}
             </button>
           </div>
         </div>
@@ -630,6 +650,8 @@ interface PaymentRowProps {
   seriesBadge?: { total: number; expanded: boolean; onToggle: () => void }
   compact?: boolean
   bare?: boolean
+  t: PaymentsText
+  formatMoney: (amount: number) => string
 }
 
 function PaymentRow({
@@ -644,6 +666,8 @@ function PaymentRow({
   seriesBadge,
   compact = false,
   bare = false,
+  t,
+  formatMoney,
 }: PaymentRowProps) {
   const isOverdue = variant === 'pending' && payment.date < today
   const diff = daysBetween(today, payment.date)
@@ -652,16 +676,17 @@ function PaymentRow({
   let badgeClass = 'bg-neutral-800 text-neutral-300'
   if (variant === 'pending') {
     if (isOverdue) {
-      dateBadge = `Venceu ${formatDateBR(payment.date)}`
+      dateBadge = t.overdueOn.replace('{date}', formatDateBR(payment.date))
       badgeClass = 'bg-red-500/15 text-red-400'
     } else if (diff === 0) {
-      dateBadge = 'Vence hoje'
+      dateBadge = t.dueToday
       badgeClass = 'bg-orange-500/15 text-orange-400'
     } else if (diff <= 7) {
-      dateBadge = `Vence em ${diff} dia${diff === 1 ? '' : 's'}`
+      dateBadge =
+        diff === 1 ? t.dueInOneDay : t.dueInDays.replace('{n}', String(diff))
       badgeClass = 'bg-amber-500/15 text-amber-400'
     } else {
-      dateBadge = `Vence ${formatDateBR(payment.date)}`
+      dateBadge = `${t.dueOn} ${formatDateBR(payment.date)}`
     }
   }
 
@@ -691,8 +716,8 @@ function PaymentRow({
             'border-neutral-700 text-neutral-500 hover:text-emerald-400',
             'disabled:opacity-50 disabled:cursor-not-allowed'
           )}
-          aria-label="Marcar como pago"
-          title="Marcar como pago"
+          aria-label={t.markAsPaid}
+          title={t.markAsPaid}
         >
           <Check className={compact ? 'h-3 w-3' : 'h-4 w-4'} />
         </button>
@@ -725,7 +750,7 @@ function PaymentRow({
               variant === 'paid' ? 'text-neutral-400' : 'text-red-400'
             )}
           >
-            {formatCurrency(Number(payment.amount))}
+            {formatMoney(Number(payment.amount))}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 mt-1">
@@ -762,11 +787,11 @@ function PaymentRow({
                 <ChevronRight className="h-3 w-3" />
               )}
               <Layers className="h-2.5 w-2.5" />
-              {seriesBadge.total} ocorrências
+              {seriesBadge.total} {t.occurrences}
             </button>
           ) : payment.is_recurring && !compact ? (
             <span className="inline-flex items-center rounded-full bg-purple-500/15 text-purple-300 px-2 py-0.5 text-[10px]">
-              Recorrente
+              {t.recurring}
             </span>
           ) : null}
         </div>
@@ -779,7 +804,7 @@ function PaymentRow({
             onClick={onRevert}
             disabled={isUpdating}
             className="p-1.5 text-neutral-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-md transition-colors disabled:opacity-50"
-            title="Marcar como pendente"
+            title={t.markAsPending}
           >
             <RotateCcw className="h-4 w-4" />
           </button>
@@ -789,7 +814,7 @@ function PaymentRow({
           onClick={onEdit}
           disabled={isUpdating}
           className="p-1.5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800 rounded-md transition-colors disabled:opacity-50"
-          title="Editar"
+          title={t.editAction}
         >
           <Pencil className="h-4 w-4" />
         </button>
@@ -798,7 +823,7 @@ function PaymentRow({
           onClick={onDelete}
           disabled={isUpdating}
           className="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors disabled:opacity-50"
-          title="Excluir"
+          title={t.deleteAction}
         >
           <Trash2 className="h-4 w-4" />
         </button>
