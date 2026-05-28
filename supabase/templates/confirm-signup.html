@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="color-scheme" content="dark light">
+  <meta name="supported-color-schemes" content="dark light">
+  <title>Finance Tracker</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style>
+    a { text-decoration: none; }
+    @media only screen and (max-width: 600px) {
+      .ft-container { width: 100% !important; }
+      .ft-px { padding-left: 24px !important; padding-right: 24px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#0a0a0a; -webkit-font-smoothing:antialiased;">
+  <!-- Preheader (hidden preview text) -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all; font-size:1px; line-height:1px; color:#0a0a0a;">
+    {{ if eq .Data.language "en" }}Confirm your email to activate your account{{ else if eq .Data.language "es" }}Confirma tu correo para activar tu cuenta{{ else }}Confirme seu e-mail para ativar sua conta{{ end }}
+    &#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0a0a0a;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="ft-container" style="width:600px; max-width:600px;">
+
+          <!-- Brand -->
+          <tr>
+            <td align="center" style="padding:8px 0 28px 0;">
+              <img src="{{ .SiteURL }}/ftlogo.png" width="56" height="56" alt="Finance Tracker" style="display:block; border:0; outline:none; text-decoration:none; width:56px; height:56px;">
+              <div style="font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:18px; font-weight:700; color:#fafafa; padding-top:10px; letter-spacing:0.2px;">
+                Finance Tracker
+              </div>
+            </td>
+          </tr>
+
+          <!-- Card -->
+          <tr>
+            <td style="background-color:#171717; border:1px solid #262626; border-radius:16px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td class="ft-px" style="padding:40px 48px;">
+
+                    <!-- Accent bar -->
+                    <div style="width:44px; height:4px; border-radius:4px; background-color:#f97316; margin-bottom:24px;"></div>
+
+                    <h1 style="margin:0 0 14px 0; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:24px; line-height:1.3; font-weight:700; color:#fafafa;">
+                      {{ if eq .Data.language "en" }}Confirm your signup{{ else if eq .Data.language "es" }}Confirma tu registro{{ else }}Confirme seu cadastro{{ end }}
+                    </h1>
+
+                    <p style="margin:0 0 28px 0; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:15px; line-height:1.65; color:#a3a3a3;">
+                      {{ if eq .Data.language "en" }}You're almost there! Confirm your email address to activate your Finance Tracker account and start managing your finances.{{ else if eq .Data.language "es" }}¡Ya casi! Confirma tu correo electrónico para activar tu cuenta de Finance Tracker y empezar a controlar tus finanzas.{{ else }}Estamos quase lá! Confirme seu e-mail para ativar sua conta no Finance Tracker e começar a controlar suas finanças.{{ end }}
+                    </p>
+
+                    <!-- Button -->
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px 0;">
+                      <tr>
+                        <td align="center" bgcolor="#f97316" style="border-radius:10px;">
+                          <!--[if mso]>
+                          <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .ConfirmationURL }}" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="20%" strokecolor="#f97316" fillcolor="#f97316">
+                            <w:anchorlock/>
+                            <center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:600;">
+                              {{ if eq .Data.language "en" }}Confirm email{{ else if eq .Data.language "es" }}Confirmar correo{{ else }}Confirmar e-mail{{ end }}
+                            </center>
+                          </v:roundrect>
+                          <![endif]-->
+                          <!--[if !mso]><!-- -->
+                          <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block; padding:14px 36px; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:16px; font-weight:600; color:#ffffff; text-decoration:none; border-radius:10px; background-color:#f97316;">
+                            {{ if eq .Data.language "en" }}Confirm email{{ else if eq .Data.language "es" }}Confirmar correo{{ else }}Confirmar e-mail{{ end }}
+                          </a>
+                          <!--<![endif]-->
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Fallback link -->
+                    <p style="margin:0 0 8px 0; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:13px; line-height:1.5; color:#737373;">
+                      {{ if eq .Data.language "en" }}Or copy and paste this link into your browser:{{ else if eq .Data.language "es" }}O copia y pega este enlace en tu navegador:{{ else }}Ou copie e cole este link no seu navegador:{{ end }}
+                    </p>
+                    <p style="margin:0; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:13px; line-height:1.5; word-break:break-all;">
+                      <a href="{{ .ConfirmationURL }}" target="_blank" style="color:#fb923c; text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                    </p>
+
+                    <!-- Divider -->
+                    <div style="height:1px; background-color:#262626; margin:28px 0;"></div>
+
+                    <p style="margin:0; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:13px; line-height:1.6; color:#737373;">
+                      {{ if eq .Data.language "en" }}If you didn't create this account, you can safely ignore this email.{{ else if eq .Data.language "es" }}Si no creaste esta cuenta, puedes ignorar este correo de forma segura.{{ else }}Se você não criou esta conta, pode ignorar este e-mail com segurança.{{ end }}
+                    </p>
+
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding:28px 24px 8px 24px;">
+              <p style="margin:0 0 4px 0; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:13px; font-weight:600; color:#a3a3a3;">
+                Finance Tracker
+              </p>
+              <p style="margin:0 0 10px 0; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:12px; color:#525252;">
+                {{ if eq .Data.language "en" }}Smart financial management{{ else if eq .Data.language "es" }}Control financiero inteligente{{ else }}Controle financeiro inteligente{{ end }}
+              </p>
+              <p style="margin:0; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:11px; color:#404040;">
+                {{ if eq .Data.language "en" }}This email was sent to{{ else if eq .Data.language "es" }}Este correo fue enviado a{{ else }}Este e-mail foi enviado para{{ end }} {{ .Email }}
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
